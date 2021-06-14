@@ -75,7 +75,7 @@ def main(args):
         torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
 
 
-# train one epoch over the whole training dataset. You can change the method's signature.
+# train one epoch over the whole training dataset.
 def train(loader, model, criterion, optimizer, epoch):
     total_loss = 0
     total_accuracy = 0
@@ -105,7 +105,7 @@ def train(loader, model, criterion, optimizer, epoch):
     return mean_train_loss, mean_train_accuracy
 
 
-# validation function. you can change the method's signature.
+# validation function.
 def validate(loader, model, criterion, epoch):
     total_loss = 0
     total_accuracy = 0
