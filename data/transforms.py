@@ -8,7 +8,6 @@ from torch.utils.data._utils.collate import default_collate
 
 
 def custom_collate(batch):
-    print(len(batch[0]))
     img, label = default_collate(batch)
     if isinstance(img, list):
         img = torch.cat(img, dim=0)

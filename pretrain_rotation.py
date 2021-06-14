@@ -19,7 +19,7 @@ def parse_arguments():
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
-    parser.add_argument('--bs', type=int, default=8, help='batch_size')
+    parser.add_argument('--bs', type=int, default=64, help='batch_size')
     parser.add_argument("--size", type=int, default=32, help="size of the images to feed the network")
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
@@ -63,7 +63,6 @@ def main(args):
     logger.info(expdata)
     logger.info('train_data {}'.format(train_data.__len__()))
 
-    best_val_loss = np.inf
     # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
     for epoch in range(8):  # 8
         logger.info("Epoch {}".format(epoch))
@@ -71,6 +70,9 @@ def main(args):
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
+
+        # save model
+        torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
 
 
 # train one epoch over the whole training dataset. You can change the method's signature.
@@ -80,6 +82,7 @@ def train(loader, model, criterion, optimizer, epoch):
     total = 0
     model.train()
     for i, (inputs, labels) in enumerate(loader):
+        print(f"Trainstep: {i}")
         inputs = inputs.cuda()
         labels = labels.cuda()
         optimizer.zero_grad()
