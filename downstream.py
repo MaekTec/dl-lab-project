@@ -91,6 +91,7 @@ def main(args):
     criterion = torch.nn.CrossEntropyLoss().cuda()
     optimizer = torch.optim.SGD(pretrained_model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
 
+
     # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
     for epoch in range(8):  # 8
         logger.info("Epoch {}".format(epoch))
