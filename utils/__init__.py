@@ -65,27 +65,27 @@ def get_logger(logdir, name, evaluate=False):
     return logger
 
 
-def save_in_log(log, save_step, set="", scalar_dict=None, text_dict=None, image_dict=None, num_classes=1):
+def save_in_log(log, save_step, scalar_dict=None, text_dict=None, image_dict=None, num_classes=1):
     if scalar_dict:
-        [log.add_scalar(set+"_"+k, v, save_step) for k, v in scalar_dict.items()]
+        [log.add_scalar(k, v, save_step) for k, v in scalar_dict.items()]
     if text_dict:
-        [log.add_text(set+"_"+k, v, save_step) for k, v in text_dict.items()]
+        [log.add_text(k, v, save_step) for k, v in text_dict.items()]
     if image_dict:
         for k, v in image_dict.items():
             if k=='sample':
-                log.add_images(set+"_"+k, (v - v.min()) / (v.max() - v.min()), save_step)
+                log.add_images(k, (v - v.min()) / (v.max() - v.min()), save_step)
             elif k=='vec':
-                log.add_images(set+"_"+k, v.unsqueeze(1).unsqueeze(1), save_step)
+                log.add_images(k, v.unsqueeze(1).unsqueeze(1), save_step)
             elif k=='gt':
-                log.add_images(set+"_"+k, v.unsqueeze(1).expand(-1, 3, -1, -1).float()/num_classes, save_step)
+                log.add_images(k, v.unsqueeze(1).expand(-1, 3, -1, -1).float()/num_classes, save_step)
             elif k=='pred':
-                log.add_images(set+"_"+k, v.argmax(dim=1, keepdim=True).float()/num_classes, save_step)
+                log.add_images(k, v.argmax(dim=1, keepdim=True).float()/num_classes, save_step)
             elif k=='att':
                 assert isinstance(v, list)
                 for idx, alpha in enumerate(v):
                     alpha -= torch.min(torch.min(alpha, dim=1, keepdim=True)[0], dim=2, keepdim=True)[0]
                     alpha /= torch.max(torch.max(alpha, dim=1, keepdim=True)[0], dim=2, keepdim=True)[0]
-                    log.add_images(set+"_"+k+"_"+str(idx), alpha.unsqueeze(1), save_step)
+                    log.add_images(k+"_"+str(idx), alpha.unsqueeze(1), save_step)
             else:
-                log.add_images(set+"_"+k, v, save_step)
+                log.add_images(k, v, save_step)
     log.flush()
