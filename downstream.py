@@ -93,7 +93,7 @@ def main(args):
 
 
     # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
-    for epoch in range(8):  # 8
+    for epoch in range(50):  # 8
         logger.info("Epoch {}".format(epoch))
         train_loss, train_acc = train(train_loader, pretrained_model, criterion, optimizer, epoch)
 
