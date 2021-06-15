@@ -61,7 +61,7 @@ def main(args):
     pretrained_model = ViTBackbone(pretrained=False).cuda()
     print(pretrained_model.net.mlp_head)
     num_ftrs = pretrained_model.net.mlp_head[1].in_features
-    pretrained_model.load_state_dict(torch.load('ckpt_best.pth')) 
+    pretrained_model.load_state_dict(torch.load('ckpt_best.pth'))
 
     disable_gradients(pretrained_model)
     pretrained_model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
@@ -80,7 +80,7 @@ def main(args):
                                                pin_memory=True, drop_last=True)
 
     val_data = CIFAR10Custom(data_root,
-                               train=False,
+                               val=True,
                                download=True,
                                transform=transform,
                                unlabeled=False)
