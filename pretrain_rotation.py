@@ -38,7 +38,7 @@ def parse_arguments():
 
 def main(args):
     # Logging to the file and stdout
-    logger = get_logger(args.output_folder, args.exp_name)
+    logger = get_logger(args.logs_folder, args.exp_name)
 
     # build model and load weights
     model = ViTBackbone(pretrained=False).cuda()
