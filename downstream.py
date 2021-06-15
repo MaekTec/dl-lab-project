@@ -21,6 +21,7 @@ writer = SummaryWriter()
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
+    parser.add_argument('weight_init', type=str, default="ImageNet")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
     parser.add_argument('--bs', type=int, default=64, help='batch_size')
@@ -61,7 +62,7 @@ def main(args):
     pretrained_model = ViTBackbone(pretrained=False).cuda()
     print(pretrained_model.net.mlp_head)
     num_ftrs = pretrained_model.net.mlp_head[1].in_features
-    pretrained_model.load_state_dict(torch.load('ckpt_best.pth'))
+    pretrained_model.load_state_dict(torch.load(args.weight_init))
 
     disable_gradients(pretrained_model)
     pretrained_model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
@@ -104,7 +105,7 @@ def main(args):
         logger.info('Validation accuracy: {}'.format(val_acc))
 
         # save model
-        torch.save(pretrained_model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
+        torch.save(pretrained_model.state_dict(), os.path.join(args.model_folder, "downstream_best_.pth".format(epoch)))
 
 
 def train(loader, model, criterion, optimizer, epoch):
