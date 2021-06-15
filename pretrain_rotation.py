@@ -46,13 +46,12 @@ def main(args):
     # load dataset
     data_root = args.data_folder
     train_transform = get_transforms_pretraining(args)
-    train_data = CIFAR10Custom(data_root,
-                               train=True,
-                               transform=train_transform,
-                               download=True,
-                               unlabeled=True)
+    train_data = CIFAR10Custom(data_root, train=True, transform=train_transform, download=True, unlabeled=True)
+    val_data = CIFAR10Custom(data_root, val=True, transform=train_transform, download=True, unlabeled=True)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=4,
                                                pin_memory=True, drop_last=True, collate_fn=custom_collate)
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=4,
+                                             pin_memory=True, drop_last=False, collate_fn=custom_collate)
 
     # TODO: loss function
     criterion = torch.nn.CrossEntropyLoss()
@@ -61,17 +60,24 @@ def main(args):
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
     logger.info(expdata)
     logger.info('train_data {}'.format(train_data.__len__()))
+    logger.info('val_data {}'.format(val_data.__len__()))
 
+    best_val_loss = np.inf
     # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
     for epoch in range(8):  # 8
         logger.info("Epoch {}".format(epoch))
         train_loss, train_acc = train(train_loader, model, criterion, optimizer, epoch)
+        val_loss, val_acc = validate(val_loader, model, criterion, epoch)
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
+        logger.info('Validation loss: {}'.format(val_loss))
+        logger.info('Validation accuracy: {}'.format(val_acc))
 
         # save model
-        torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
+        if val_loss < best_val_loss:
+            torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
+            best_val_loss = val_loss
 
 
 # train one epoch over the whole training dataset.
