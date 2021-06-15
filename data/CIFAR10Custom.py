@@ -20,10 +20,10 @@ class CIFAR10Custom(torchvision.datasets.CIFAR10):
             unlabeled: bool = True,
             valset_percentage_of_trainset = 0.1
     ) -> None:
-        super(CIFAR10Custom, self).__init__(root, train, transform, target_transform, download)
+        super(CIFAR10Custom, self).__init__(root, not test, transform, target_transform, download)
         self.unlabeled = unlabeled
 
-        assert train != val != test  # only one can be active
+        assert sum([train, val, test]) == 1  # only one can be active
         assert any([train, val, test])  # at least one hast to active
 
         if not test:
@@ -35,6 +35,8 @@ class CIFAR10Custom(torchvision.datasets.CIFAR10):
             else:
                 self.data = self.data[:split]
                 self.targets = self.targets[:split]
+
+            print(len(self.data))
 
             valset_size = int(len(self.data) * valset_percentage_of_trainset)
             trainset_size = len(self.data) - valset_size

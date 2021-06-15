@@ -19,7 +19,7 @@ def parse_arguments():
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
-    parser.add_argument('--bs', type=int, default=64, help='batch_size')
+    parser.add_argument('--bs', type=int, default=256, help='batch_size')
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
