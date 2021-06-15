@@ -11,23 +11,39 @@ class CIFAR10Custom(torchvision.datasets.CIFAR10):
     def __init__(
             self,
             root: str,
-            train: bool = True,
+            train: bool = False,
+            val: bool = False,
+            test: bool = False,
             transform: Optional[Callable] = None,
             target_transform: Optional[Callable] = None,
             download: bool = False,
-            unlabeled: bool = True
+            unlabeled: bool = True,
+            valset_percentage_of_trainset = 0.1
     ) -> None:
-        super(CIFAR10Custom, self).__init__(root, train, transform, target_transform, download)
+        super(CIFAR10Custom, self).__init__(root, not test, transform, target_transform, download)
         self.unlabeled = unlabeled
 
-        N = len(self.data)
-        split = int(N/10)
-        if unlabeled:
-            self.data = self.data[split:]
-            self.targets = None
-        else:
-            self.data = self.data[:split]
-            self.targets = self.targets[:split]
+        assert sum([train, val, test]) == 1  # only one can be active
+        assert any([train, val, test])  # at least one hast to active
+
+        if not test:
+            N = len(self.data)
+            split = int(N/10)
+            if unlabeled:
+                self.data = self.data[split:]
+                self.targets = None
+            else:
+                self.data = self.data[:split]
+                self.targets = self.targets[:split]
+
+            print(len(self.data))
+
+            valset_size = int(len(self.data) * valset_percentage_of_trainset)
+            trainset_size = len(self.data) - valset_size
+            if train:
+                self.data = self.data[valset_size:]
+            if val:
+                self.data = self.data[:valset_size]
 
     @staticmethod
     def mean():
