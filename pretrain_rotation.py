@@ -20,17 +20,16 @@ def parse_arguments():
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
     parser.add_argument('--bs', type=int, default=64, help='batch_size')
-    parser.add_argument("--size", type=int, default=32, help="size of the images to feed the network")
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
 
-    hparam_keys = ["lr", "bs", "size"]
+    hparam_keys = ["lr", "bs"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
 
-    args.output_folder = check_dir(os.path.join(args.output_root, 'pretrain', args.exp_name))
+    args.output_folder = check_dir(os.path.join(args.output_root, 'pretrain_rotation', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
@@ -52,7 +51,7 @@ def main(args):
                                transform=train_transform,
                                download=True,
                                unlabeled=True)
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=2,
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=4,
                                                pin_memory=True, drop_last=True, collate_fn=custom_collate)
 
     # TODO: loss function
