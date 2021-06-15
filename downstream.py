@@ -98,7 +98,7 @@ def main(args):
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
 
-        val_loss, val_acc = validate(val_loader, pretrained_model, criterion, optimizer, epoch)
+        val_loss, val_acc = validate(val_loader, pretrained_model, criterion, epoch)
 
         logger.info('Validation loss: {}'.format(val_loss))
         logger.info('Validation accuracy: {}'.format(val_acc))
