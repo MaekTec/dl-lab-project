@@ -1,4 +1,4 @@
-# BA Markus Kaeppeler
+# Deep Learning Project: Contrastive Self-Supervision
 
 ## Installation
 ```
