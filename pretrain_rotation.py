@@ -8,6 +8,7 @@ from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, sa
 from models.pretraining_backbone import ViTBackbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
+import torchsummary
 
 set_random_seed(0)
 global_step = 0
@@ -18,7 +19,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('--output-root', type=str, default='results')
-    parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
@@ -43,6 +44,9 @@ def main(args):
     # build model and load weights
     model = ViTBackbone(pretrained=False).cuda()
 
+    print(model)
+    torchsummary.summary(model, (3, 32, 32), 256)
+
     # load dataset
     data_root = args.data_folder
     train_transform = get_transforms_pretraining(args)
@@ -55,7 +59,8 @@ def main(args):
 
     # TODO: loss function
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
     logger.info(expdata)
