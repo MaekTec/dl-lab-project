@@ -21,6 +21,7 @@ writer = SummaryWriter()
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
+    parser.add_argument('weight_init', type=str, default="ImageNet")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
     parser.add_argument('--bs', type=int, default=64, help='batch_size')
@@ -61,7 +62,7 @@ def main(args):
     pretrained_model = ViTBackbone(pretrained=False).cuda()
     print(pretrained_model.net.mlp_head)
     num_ftrs = pretrained_model.net.mlp_head[1].in_features
-    pretrained_model.load_state_dict(torch.load('ckpt_best.pth'))
+    pretrained_model.load_state_dict(torch.load(args.weight_init))
 
     disable_gradients(pretrained_model)
     pretrained_model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
@@ -90,8 +91,9 @@ def main(args):
     criterion = torch.nn.CrossEntropyLoss().cuda()
     optimizer = torch.optim.SGD(pretrained_model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
 
+
     # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
-    for epoch in range(8):  # 8
+    for epoch in range(50):  # 8
         logger.info("Epoch {}".format(epoch))
         train_loss, train_acc = train(train_loader, pretrained_model, criterion, optimizer, epoch)
 
@@ -104,7 +106,7 @@ def main(args):
         logger.info('Validation accuracy: {}'.format(val_acc))
 
         # save model
-        torch.save(pretrained_model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
+        torch.save(pretrained_model.state_dict(), os.path.join(args.model_folder, "downstream_best_.pth".format(epoch)))
 
 
 def train(loader, model, criterion, optimizer, epoch):
