@@ -13,7 +13,7 @@ class ViTBackbone(nn.Module):
             patch_size=4,
             num_classes=10,
             dim=512,
-            depth=4,
+            depth=6,
             heads=8,
             mlp_dim=1024,
             dropout=0.1,
