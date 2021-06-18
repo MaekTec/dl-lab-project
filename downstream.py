@@ -3,7 +3,6 @@ import numpy as np
 import argparse
 import torch
 from pprint import pprint
-from data.transforms import get_transforms_pretraining, custom_collate
 from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log
 from models.pretraining_backbone import ViTBackbone
 from torch.utils.tensorboard import SummaryWriter
