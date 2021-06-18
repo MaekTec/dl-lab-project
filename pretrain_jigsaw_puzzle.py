@@ -2,15 +2,26 @@ import os
 import numpy as np
 import argparse
 import torch
+import torch.nn as nn
 from pprint import pprint
-from data.transforms import get_transforms_pretraining_rotation, custom_collate
+from data.transforms import get_transforms_pretraining_jigsaw_puzzle
 from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log
 from models.pretraining_backbone import ViTBackbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
+from models.context_free_network import ContextFreeNetwork
 
-# https://arxiv.org/pdf/1803.07728.pdf
+"""
+https://arxiv.org/pdf/1603.09246.pdf
+fixed random permutation set
+to avoid learning of shortcuts:
+- more than one permutation per image
+- shuffle tiles as much as possible with Hamming distance
+- random gap between tiles
+- resize to 256 and random crop 225x225, split in 9 tiles each 75x75 and extract 64x64 from each with random shift
+- grayscale images
+"""
 
 set_random_seed(0)
 global_step = 0
@@ -32,7 +43,7 @@ def parse_arguments():
 
     args.exp_name += "_{}".format(args.exp_suffix)
 
-    args.output_folder = check_dir(os.path.join(args.output_root, 'pretrain_rotation', args.exp_name))
+    args.output_folder = check_dir(os.path.join(args.output_root, 'pretrain_jigsaw_puzzle', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
@@ -43,21 +54,21 @@ def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
 
-    # build model and load weights
-    model = ViTBackbone(pretrained=False).cuda()
-
-    print(model)
-    torchsummary.summary(model, (3, 32, 32), 256)
+    # build model
+    encoder = ViTBackbone(pretrained=False).cuda()
+    num_features = encoder.net.mlp_head[1].in_features
+    encoder.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=512).cuda()
+    model = ContextFreeNetwork(encoder, 512*4, 24).cuda()  # out_features of ViT * number of tiles
 
     # load dataset
     data_root = args.data_folder
-    train_transform = get_transforms_pretraining_rotation(args)
+    train_transform = get_transforms_pretraining_jigsaw_puzzle()
     train_data = CIFAR10Custom(data_root, train=True, transform=train_transform, download=True, unlabeled=True)
     val_data = CIFAR10Custom(data_root, val=True, transform=train_transform, download=True, unlabeled=True)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=4,
-                                               pin_memory=True, drop_last=True, collate_fn=custom_collate)
+                                               pin_memory=True, drop_last=True)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=4,
-                                             pin_memory=True, drop_last=False, collate_fn=custom_collate)
+                                             pin_memory=True, drop_last=False)
 
     # TODO: loss function
     criterion = torch.nn.CrossEntropyLoss()
