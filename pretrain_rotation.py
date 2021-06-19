@@ -47,7 +47,7 @@ def main(args):
     model = ViTBackbone(pretrained=False).cuda()
 
     print(model)
-    torchsummary.summary(model, (3, 64, 64), 256)
+    torchsummary.summary(model, (3, 32, 32), 256)
 
     # load dataset
     data_root = args.data_folder

@@ -42,6 +42,7 @@ class CIFAR10Custom(torchvision.datasets.CIFAR10):
             trainset_size = len(self.data) - valset_size
             if train:
                 self.data = self.data[valset_size:]
+                self.data = self.data[:5000]
             if val:
                 self.data = self.data[:valset_size]
 

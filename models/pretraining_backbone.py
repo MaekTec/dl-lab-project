@@ -9,8 +9,8 @@ class ViTBackbone(nn.Module):
         super().__init__()
 
         self.net = ViT(
-            image_size=64,
-            patch_size=8,
+            image_size=32,
+            patch_size=4,
             num_classes=10,
             dim=512,
             depth=6,
