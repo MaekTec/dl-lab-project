@@ -62,7 +62,9 @@ def main(args):
 
     # TODO: loss function
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=15)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
     logger.info(expdata)
@@ -74,6 +76,7 @@ def main(args):
     for epoch in range(100):
         logger.info("Epoch {}".format(epoch))
         train_loss, train_acc = train(train_loader, model, criterion, optimizer, epoch)
+        scheduler.step()
         val_loss, val_acc = validate(val_loader, model, criterion, epoch)
 
         logger.info('Training loss: {}'.format(train_loss))
