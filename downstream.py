@@ -95,6 +95,7 @@ def main(args):
 
     optimizer = torch.optim.SGD(pretrained_model.parameters(), lr=args.lr, momentum=0.9)
     scheduler =CosineAnnealingLR(optimizer, T_max=15, verbose=True )
+    #mdlmslds
 
     #optimizer = torch.optim.Adam(pretrained_model.parameters(),betas=(0.9,0.999),weight_decay=0.1 )
 
