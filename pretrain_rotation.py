@@ -44,8 +44,7 @@ def main(args):
     logger = get_logger(args.logs_folder, args.exp_name)
 
     # build model and load weights
-    #model = ViTBackbone(num_classes=4).cuda()
-    model = ResNet18Backbone(pretrained=True, num_classes=4).cuda()
+    model = ViTBackbone(image_size=128, patch_size=16, num_classes=4).cuda()
 
     #print(model)
     #torchsummary.summary(model, (3, 32, 32), 256)

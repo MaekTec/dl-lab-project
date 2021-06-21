@@ -145,6 +145,7 @@ def get_transforms_pretraining_rotation(args):
         RandomHorizontalFlip(),
         ImgRotation(),
         ToTensorAfterRotations(),
+        ApplyOnList(Resize(128)),
         ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()))
     ])
     return train_transform
