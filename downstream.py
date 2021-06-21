@@ -9,6 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torch.nn as nn
 import torchvision.transforms as transforms
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
 set_random_seed(0)
@@ -91,14 +92,17 @@ def main(args):
                                                pin_memory=True, drop_last=True)
 
     criterion = torch.nn.CrossEntropyLoss().cuda()
-    optimizer = torch.optim.SGD(pretrained_model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
+
+    optimizer = torch.optim.SGD(pretrained_model.parameters(), lr=args.lr, momentum=0.9)
+    scheduler =CosineAnnealingLR(optimizer, T_max=15 )
+
     #optimizer = torch.optim.Adam(pretrained_model.parameters(),betas=(0.9,0.999),weight_decay=0.1 )
 
 
     # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
-    for epoch in range(20):  # 8
+    for epoch in range(50):  # 8
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, pretrained_model, criterion, optimizer, epoch)
+        train_loss, train_acc = train(train_loader, pretrained_model, criterion, optimizer, epoch , scheduler)
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
@@ -112,7 +116,7 @@ def main(args):
         torch.save(pretrained_model.state_dict(), os.path.join(args.model_folder, "downstream_best_.pth".format(epoch)))
 
 
-def train(loader, model, criterion, optimizer, epoch):
+def train(loader, model, criterion, optimizer, epoch, scheduler):
     total_loss = 0
     total_accuracy = 0
     total = 0
@@ -131,6 +135,7 @@ def train(loader, model, criterion, optimizer, epoch):
         total_loss += criterion(outputs, labels).item() * batch_size
         total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
+    scheduler.step()
 
     mean_train_loss = total_loss / total
     mean_train_accuracy = total_accuracy / total
