@@ -94,7 +94,7 @@ def main(args):
     criterion = torch.nn.CrossEntropyLoss().cuda()
 
     optimizer = torch.optim.SGD(pretrained_model.parameters(), lr=args.lr, momentum=0.9)
-    scheduler =CosineAnnealingLR(optimizer, T_max=15 )
+    scheduler =CosineAnnealingLR(optimizer, T_max=15, verbose=True )
 
     #optimizer = torch.optim.Adam(pretrained_model.parameters(),betas=(0.9,0.999),weight_decay=0.1 )
 
@@ -122,7 +122,7 @@ def train(loader, model, criterion, optimizer, epoch, scheduler):
     total = 0
     model.train()
     for i, (inputs, labels) in enumerate(loader):
-        print(f"Trainstep: {i}")
+        #print(f"Trainstep: {i}")
         inputs = inputs.cuda()
         labels = labels.cuda()
         optimizer.zero_grad()
