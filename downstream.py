@@ -48,7 +48,6 @@ def disable_gradients(model) -> None:
         None
     """
     # Iterate over model parameters and disable requires_grad
-    # This is how we "freeze" these layers (their weights do no change during training)
     for x in model.parameters():
         x.requires_grad = False
     return model
@@ -61,15 +60,19 @@ def main(args):
     pretrained_model = ViTBackbone(pretrained=False).cuda()
     print(pretrained_model.net.mlp_head)
     num_ftrs = pretrained_model.net.mlp_head[1].in_features
+    print(args.weight_init)
     pretrained_model.load_state_dict(torch.load(args.weight_init))
 
     disable_gradients(pretrained_model)
+    pretrained_model.net.mlp_head[0]= nn.Identity()
     pretrained_model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
-
+    torch.nn.init.zeros_(pretrained_model.net.mlp_head[1].weight)
+    print(pretrained_model)
     data_root = args.data_folder
     transform = transforms.Compose(
         [transforms.ToTensor(),
          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    #create new func
 
     train_data = CIFAR10Custom(data_root,
                                train=True,
@@ -89,6 +92,7 @@ def main(args):
 
     criterion = torch.nn.CrossEntropyLoss().cuda()
     optimizer = torch.optim.SGD(pretrained_model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
+    #optimizer = torch.optim.Adam(pretrained_model.parameters(),betas=(0.9,0.999),weight_decay=0.1 )
 
 
     # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
