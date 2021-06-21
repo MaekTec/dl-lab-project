@@ -45,9 +45,10 @@ def main(args):
 
     # build model and load weights
     model = ViTBackbone(image_size=128, patch_size=16, num_classes=4).cuda()
+    #model = ResNet18Backbone(pretrained=False, num_classes=4)
 
-    #print(model)
-    #torchsummary.summary(model, (3, 32, 32), 256)
+    print(model)
+    torchsummary.summary(model, (3, 128, 128), 256)
 
     # load dataset
     data_root = args.data_folder
