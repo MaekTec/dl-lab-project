@@ -45,7 +45,7 @@ def main(args):
 
     # build model and load weights
     #model = ViTBackbone(num_classes=4).cuda()
-    model = ResNet18Backbone(pretrained=True, num_classes=4)
+    model = ResNet18Backbone(pretrained=True, num_classes=4).cuda()
 
     #print(model)
     #torchsummary.summary(model, (3, 32, 32), 256)
