@@ -63,7 +63,7 @@ def main(args):
     print(args.weight_init)
     pretrained_model.load_state_dict(torch.load(args.weight_init))
 
-    disable_gradients(pretrained_model)
+    #disable_gradients(pretrained_model)
     pretrained_model.net.mlp_head[0]= nn.Identity()
     pretrained_model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
     torch.nn.init.zeros_(pretrained_model.net.mlp_head[1].weight)
@@ -96,7 +96,7 @@ def main(args):
 
 
     # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
-    for epoch in range(50):  # 8
+    for epoch in range(20):  # 8
         logger.info("Epoch {}".format(epoch))
         train_loss, train_acc = train(train_loader, pretrained_model, criterion, optimizer, epoch)
 
