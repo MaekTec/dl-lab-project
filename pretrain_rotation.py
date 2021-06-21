@@ -5,7 +5,7 @@ import torch
 from pprint import pprint
 from data.transforms import get_transforms_pretraining_rotation, custom_collate
 from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log
-from models.pretraining_backbone import ViTBackbone
+from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
@@ -44,7 +44,8 @@ def main(args):
     logger = get_logger(args.logs_folder, args.exp_name)
 
     # build model and load weights
-    model = ViTBackbone(num_classes=4).cuda()
+    #model = ViTBackbone(num_classes=4).cuda()
+    model = ResNet18Backbone(num_classes=4)
 
     print(model)
     torchsummary.summary(model, (3, 32, 32), 256)

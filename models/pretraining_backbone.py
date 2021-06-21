@@ -14,7 +14,7 @@ class ViTBackbone(nn.Module):
             patch_size=patch_size,
             num_classes=num_classes,
             dim=512,
-            depth=6,
+            depth=4,
             heads=8,
             mlp_dim=1024,
             dropout=0.1,
@@ -26,10 +26,10 @@ class ViTBackbone(nn.Module):
 
 
 class ResNet18Backbone(nn.Module):
-    def __init__(self, pretrained):
+    def __init__(self, pretrained, num_classes):
         super().__init__()
         self.features = IntermediateLayerGetter(resnet18(pretrained=pretrained), {"avgpool": "out"}).cuda()
-        self.fc = nn.Linear(512, 4, bias=True)
+        self.fc = nn.Linear(512, num_classes, bias=True)
         nn.init.xavier_uniform_(self.fc.weight)
 
     def forward(self, x):
