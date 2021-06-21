@@ -73,7 +73,7 @@ def main(args):
 
     best_val_loss = np.inf
     # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
-    for epoch in range(100):
+    for epoch in range(15):
         logger.info("Epoch {}".format(epoch))
         train_loss, train_acc = train(train_loader, model, criterion, optimizer, epoch)
         scheduler.step()
