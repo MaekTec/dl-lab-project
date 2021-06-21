@@ -47,8 +47,8 @@ def main(args):
     #model = ViTBackbone(num_classes=4).cuda()
     model = ResNet18Backbone(pretrained=True, num_classes=4)
 
-    print(model)
-    torchsummary.summary(model, (3, 32, 32), 256)
+    #print(model)
+    #torchsummary.summary(model, (3, 32, 32), 256)
 
     # load dataset
     data_root = args.data_folder
