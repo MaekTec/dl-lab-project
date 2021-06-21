@@ -1,3 +1,4 @@
+import argparse
 import os
 import torch
 import random
@@ -89,3 +90,15 @@ def save_in_log(log, save_step, scalar_dict=None, text_dict=None, image_dict=Non
             else:
                 log.add_images(k, v, save_step)
     log.flush()
+
+
+# https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
