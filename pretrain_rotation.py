@@ -44,7 +44,7 @@ def main(args):
     logger = get_logger(args.logs_folder, args.exp_name)
 
     # build model and load weights
-    model = ViTBackbone(pretrained=False).cuda()
+    model = ViTBackbone(num_classes=4).cuda()
 
     print(model)
     torchsummary.summary(model, (3, 32, 32), 256)
@@ -61,7 +61,7 @@ def main(args):
 
     # TODO: loss function
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0)  # 1e-4)
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
     logger.info(expdata)
