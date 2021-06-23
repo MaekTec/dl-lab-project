@@ -61,25 +61,34 @@ def main(args):
 
     logger = get_logger(args.output_folder, args.exp_name)
     # model
-    if (args.pretrain_task == 'rotation'):
-        pretrained_model = ViTBackbone(pretrained=False).cuda()
-        print(pretrained_model.net.mlp_head)
+    if args.pretrain_task == 'rotation':
+
+        pretrained_model = ViTBackbone(image_size=128, patch_size=16, num_classes=4).cuda()
         print(args.weight_init)
         pretrained_model.load_state_dict(torch.load(args.weight_init))
-    elif (args.pretrain_task == 'jigsaw'):
-        encoder = ViTBackbone(pretrained=False).cuda()
+
+        #replace the last two MLP layers as done in paper.
+        num_ftrs = pretrained_model.net.mlp_head[1].in_features
+        pretrained_model.net.mlp_head[0] = nn.Identity()
+        pretrained_model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
+        torch.nn.init.zeros_(pretrained_model.net.mlp_head[1].weight)
+
+    elif args.pretrain_task == 'jigsaw':
+        encoder = ViTBackbone().cuda()
         num_features = encoder.net.mlp_head[1].in_features
         encoder.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=512).cuda()
         pretrained_model = ContextFreeNetwork(encoder, 512 * 4, 24).cuda()  # out_features of ViT * number of tiles
         pretrained_model.load_state_dict(torch.load(args.weight_init))
+
+        # replacing the last layer
+        num_ftrs = pretrained_model.fc9.in_features
+        pretrained_model.fc9 = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
+        torch.nn.init.zeros_(pretrained_model.fc9.weight)
     else:
         return
-    #disable_gradients(pretrained_model)
-    num_ftrs = pretrained_model.net.mlp_head[1].in_features
-    pretrained_model.net.mlp_head[0]= nn.Identity()
-    pretrained_model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
-    torch.nn.init.zeros_(pretrained_model.net.mlp_head[1].weight)
     print(pretrained_model)
+    # disable_gradients(pretrained_model)
+
     data_root = args.data_folder
     transform = transforms.Compose(
         [transforms.ToTensor(),
@@ -136,6 +145,7 @@ def train(loader, model, criterion, optimizer, epoch, scheduler):
     for i, (inputs, labels) in enumerate(loader):
         #print(f"Trainstep: {i}")
         inputs = inputs.cuda()
+        #print(inputs.shape)
         labels = labels.cuda()
         optimizer.zero_grad()
         outputs = model(inputs)
