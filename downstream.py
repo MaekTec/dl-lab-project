@@ -65,7 +65,7 @@ def main(args):
         pretrained_model = ViTBackbone(image_size=128, patch_size=16, num_classes=4).cuda()
         #print(pretrained_model)
         pretrained_model.load_state_dict(torch.load(args.weight_init))
-
+        disable_gradients(pretrained_model)
         # replace the last two MLP layers as done in paper.
         num_ftrs = pretrained_model.net.mlp_head[1].in_features
         #pretrained_model.net.mlp_head[0] = nn.Identity()
@@ -86,7 +86,7 @@ def main(args):
     else:
         return
     #print(pretrained_model)
-    # disable_gradients(pretrained_model)
+
 
     data_root = args.data_folder
     transform = transforms.Compose(
