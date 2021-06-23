@@ -63,12 +63,10 @@ def main(args):
     if args.pretrain_task == 'rotation':
 
         pretrained_model = ViTBackbone(image_size=128, patch_size=16, num_classes=4).cuda()
-        #print(pretrained_model)
         pretrained_model.load_state_dict(torch.load(args.weight_init))
-        disable_gradients(pretrained_model)
         # replace the last two MLP layers as done in paper.
         num_ftrs = pretrained_model.net.mlp_head[1].in_features
-        #pretrained_model.net.mlp_head[0] = nn.Identity()
+        pretrained_model.net.mlp_head[0] = nn.Identity()
         pretrained_model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
         torch.nn.init.zeros_(pretrained_model.net.mlp_head[1].weight)
 
