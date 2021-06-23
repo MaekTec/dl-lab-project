@@ -26,6 +26,7 @@ def parse_arguments():
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
     parser.add_argument('--bs', type=int, default=64, help='batch_size')
+    parser.add_argument('--epochs', type=int, default=50,help='epochs')
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
@@ -113,9 +114,10 @@ def main(args):
 
     criterion = torch.nn.CrossEntropyLoss().cuda()
 
-    optimizer = torch.optim.SGD(pretrained_model.parameters(), lr=args.lr, momentum=0.9)
-    scheduler = CosineAnnealingLR(optimizer, T_max=15, verbose=True)
-    # mdlmslds
+    #optimizer = torch.optim.SGD(pretrained_model.parameters(), lr=args.lr, momentum=0.9)
+    #scheduler = CosineAnnealingLR(optimizer, T_max=15, verbose=True)
+    optimizer = torch.optim.Adam(pretrained_model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     # optimizer = torch.optim.Adam(pretrained_model.parameters(),betas=(0.9,0.999),weight_decay=0.1 )
 
@@ -156,7 +158,7 @@ def train(loader, model, criterion, optimizer, epoch, scheduler):
         total_loss += criterion(outputs, labels).item() * batch_size
         total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
-    #scheduler.step()
+    scheduler.step()
 
     mean_train_loss = total_loss / total
     mean_train_accuracy = total_accuracy / total
