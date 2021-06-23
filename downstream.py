@@ -156,7 +156,7 @@ def train(loader, model, criterion, optimizer, epoch, scheduler):
         total_loss += criterion(outputs, labels).item() * batch_size
         total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
-    scheduler.step()
+    #scheduler.step()
 
     mean_train_loss = total_loss / total
     mean_train_accuracy = total_accuracy / total
