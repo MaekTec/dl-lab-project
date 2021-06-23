@@ -175,9 +175,9 @@ def get_transforms_downstream_rotation(args):
     """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
         #RandomCrop(32, padding=4),
-        #RandomHorizontalFlip(),
+        RandomHorizontalFlip(),
         ToTensor(),
-        Resize(128),
+        #Resize(128),
         Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
     ])
     return train_transform
