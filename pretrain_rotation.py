@@ -24,6 +24,7 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
+    parser.add_argument('--image-size', type=int, default=128, help='size of image')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
                         const=True, default=False,
                         help="Use ResNet instead of Vit")
@@ -31,7 +32,7 @@ def parse_arguments():
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
 
-    hparam_keys = ["lr", "bs", "epochs", "resnet"]
+    hparam_keys = ["lr", "bs", "epochs", "image_size", "resnet"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
@@ -51,10 +52,10 @@ def main(args):
     if args.resnet:
         model = ResNet18Backbone(pretrained=False, num_classes=4)
     else:
-        model = ViTBackbone(image_size=128, patch_size=16, num_classes=4).cuda()
+        model = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=4).cuda()
 
     print(model)
-    torchsummary.summary(model, (3, 128, 128), 256)
+    torchsummary.summary(model, (3, args.image_size, args.image_size), args.bs)
 
     # load dataset
     data_root = args.data_folder

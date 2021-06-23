@@ -65,10 +65,16 @@ class ShuffleTiles:
 
     @staticmethod
     def hamming(p_0, p_1):
+        p_0 = np.expand_dims(p_0, axis=1)
+        p_1 = np.expand_dims(p_1, axis=0)
+        D = np.sum(p_0 != p_1, axis=2)
+        """
+        # Same, but slower:
         D = np.zeros((len(p_0), len(p_1)))
         for i in range(len(p_0)):
             for j in range(len(p_1)):
                 D[i, j] = np.sum(p_0[i] != p_1[j])
+        """
         return D
 
     def generate_permutation_set(self):
@@ -109,7 +115,7 @@ class ColorChannelJitter:
             jitter = tuple(np.random.randint(-self.max_jitter + 1, self.max_jitter + 1, 2))
             x[c, ...] = torch.roll(x[c, ...], jitter, (0, 1))
 
-        x = x[:, self.max_jitter:-self.max_jitter, self.max_jitter:-self.max_jitter]
+        x = x[:, self.max_jitter:-self.max_jitter, self.max_jitter:-self.max_jitter]  # crop
         return x
 
 
@@ -145,21 +151,22 @@ def get_transforms_pretraining_rotation(args):
         RandomHorizontalFlip(),
         ImgRotation(),
         ToTensorAfterRotations(),
-        ApplyOnList(Resize(128)),
+        ApplyOnList(Resize(args.image_size)),
         ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()))
     ])
     return train_transform
 
 
-def get_transforms_pretraining_jigsaw_puzzle():
+def get_transforms_pretraining_jigsaw_puzzle(args):
     """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
         ToTensor(),
-        Resize(74),
-        DivideInTiles(2),
-        ShuffleTiles(2, 24),
-        ApplyOnList(RandomCrop(34)),
-        ApplyOnList(ColorChannelJitter(1)),
+        Resize(args.image_size*4),
+        #ApplyOnList(ColorChannelJitter(2)),  # Has no purpose for the ViT, because image patch is flattened.
+        RandomCrop(int(225/256*args.image_size*4)),
+        DivideInTiles(args.num_tiles_per_dim),
+        ShuffleTiles(args.num_tiles_per_dim, args.number_of_permutations),
+        ApplyOnList(RandomCrop(args.image_size)),
         ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
         ApplyOnList(RandomGrayscale(p=0.3)),
         CollateList()
