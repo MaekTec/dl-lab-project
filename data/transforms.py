@@ -19,6 +19,7 @@ def custom_collate(batch):
 
 class ImgRotation:
     """ Produce 4 rotated versions of the input image. """
+
     def __init__(self):
         self.angles = [0, 90, 180, 270]
 
@@ -49,17 +50,18 @@ class DivideInTiles:
         patches = []
         for i in range(self.num_tiles_per_dim):
             for j in range(self.num_tiles_per_dim):
-                patches.append(x[:, j*patch_height:j*patch_height+patch_height, i*patch_width:i*patch_width+patch_width])
-        #labels = list(range(self.num_tiles_per_dim**2))
-        #assert len(patches) == len(labels)
-        return patches  #, labels
+                patches.append(x[:, j * patch_height:j * patch_height + patch_height,
+                               i * patch_width:i * patch_width + patch_width])
+        # labels = list(range(self.num_tiles_per_dim**2))
+        # assert len(patches) == len(labels)
+        return patches  # , labels
 
 
 class ShuffleTiles:
 
     def __init__(self, num_tiles_per_dim, number_of_permutations):
         self.num_tiles_per_dim = num_tiles_per_dim
-        self.num_tiles = self.num_tiles_per_dim**2
+        self.num_tiles = self.num_tiles_per_dim ** 2
         self.N = number_of_permutations
         self.permutation_set = self.generate_permutation_set()
 
@@ -96,11 +98,11 @@ class ShuffleTiles:
         permutation_index = np.random.randint(0, len(self.permutation_set))
         permutation = self.permutation_set[permutation_index]
         images_reordered = []
-        #labels_reordered = []
+        # labels_reordered = []
         for i in permutation:
             images_reordered.append(images[i])
-            #labels_reordered.append(labels[i])
-        return images_reordered, permutation_index #labels_reordered
+            # labels_reordered.append(labels[i])
+        return images_reordered, permutation_index  # labels_reordered
 
 
 class ColorChannelJitter:
@@ -121,6 +123,7 @@ class ColorChannelJitter:
 
 class ApplyOnList:
     """ Apply a transformation to a list of images (e.g. after applying ImgRotation)"""
+
     def __init__(self, transform):
         self.transform = transform
 
@@ -132,6 +135,7 @@ class ApplyOnList:
 
 class ToTensorAfterRotations:
     """ Transform a list of images to a pytorch tensor (e.g. after applying ImgRotation)"""
+
     def __call__(self, x):
         images, labels = x
         return [TF.to_tensor(i) for i in images], [torch.tensor(l) for l in labels]
@@ -170,5 +174,17 @@ def get_transforms_pretraining_jigsaw_puzzle(args):
         ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
         ApplyOnList(RandomGrayscale(p=0.3)),
         CollateList()
+    ])
+    return train_transform
+
+
+def get_transforms_downstream_rotation(args):
+    """ Returns the transformations for the pretraining task. """
+    train_transform = Compose([
+        #RandomCrop(32, padding=4),
+        RandomHorizontalFlip(),
+        ToTensor(),
+        #Resize(128),
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
     ])
     return train_transform
