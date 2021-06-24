@@ -65,7 +65,7 @@ def main(args):
 
     # build model
     if args.resnet:
-        encoder = ResNet18Backbone(pretrained=False, num_classes=args.splits)
+        encoder = ResNet18Backbone(pretrained=False, num_classes=args.number_of_permutations)
 
     else:
         encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=args.number_of_permutations).cuda()
