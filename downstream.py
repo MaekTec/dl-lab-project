@@ -34,10 +34,10 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('pretrain_task', type=PretrainTask, choices=list(PretrainTask))
-    parser.add_argument('--weight_init', type=str, default="ImageNet")
+    parser.add_argument('--weight-init', type=str, default="ImageNet")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
-    parser.add_argument('--weight_decay', type=float, default=0.01, help='weight decay')
+    parser.add_argument('--weight-decay', type=float, default=0.01, help='weight decay')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
@@ -76,6 +76,7 @@ def disable_gradients(model) -> None:
 
 def main(args):
     logger = get_logger(args.output_folder, args.exp_name)
+
     # model
     if args.resnet:
         model = ResNet18Backbone(num_classes=10).cuda()
@@ -117,7 +118,6 @@ def main(args):
     data_root = args.data_folder
     transform = get_transforms_downstream_training(args)
     transform_validation = get_transforms_downstream_validation(args)
-    #transform = get_transforms_downstream_rotation(args)
 
     train_data = CIFAR10Custom(data_root,
                                train=True,
