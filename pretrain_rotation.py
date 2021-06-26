@@ -4,11 +4,12 @@ import argparse
 import torch
 from pprint import pprint
 from data.transforms import get_transforms_pretraining_rotation, custom_collate
-from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log, str2bool
+from utils import check_dir, set_random_seed, get_logger, accuracy, save_in_log, str2bool
 from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
+from tqdm import tqdm
 
 # https://arxiv.org/pdf/1803.07728.pdf
 
@@ -100,7 +101,7 @@ def train(loader, model, criterion, optimizer, epoch):
     total_accuracy = 0
     total = 0
     model.train()
-    for i, (inputs, labels) in enumerate(loader):
+    for i, (inputs, labels) in tqdm(enumerate(loader)):
         print(f"Trainstep: {i}")
         inputs = inputs.cuda()
         labels = labels.cuda()
@@ -131,7 +132,7 @@ def validate(loader, model, criterion, epoch):
     total = 0
     model.eval()
     with torch.no_grad():
-        for i, (inputs, labels) in enumerate(loader):
+        for i, (inputs, labels) in tqdm(enumerate(loader)):
             inputs = inputs.cuda()
             labels = labels.cuda()
             outputs = model(inputs)

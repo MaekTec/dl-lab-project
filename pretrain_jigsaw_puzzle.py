@@ -5,12 +5,13 @@ import torch
 import torch.nn as nn
 from pprint import pprint
 from data.transforms import get_transforms_pretraining_jigsaw_puzzle
-from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log, str2bool
+from utils import check_dir, set_random_seed, get_logger, accuracy, save_in_log, str2bool
 from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
 from models.context_free_network import ContextFreeNetwork
+from tqdm import tqdm
 
 """
 https://arxiv.org/pdf/1603.09246.pdf
@@ -65,8 +66,7 @@ def main(args):
     # build model
     encoder_out_dim = 512
     if args.resnet:
-        encoder = ResNet18Backbone(num_classes=encoder_out_dim).cuda()  # TODO
-
+        encoder = ResNet18Backbone(num_classes=encoder_out_dim).cuda()
     else:
         encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=encoder_out_dim).cuda()
 
@@ -119,8 +119,7 @@ def train(loader, model, criterion, optimizer, epoch):
     total_accuracy = 0
     total = 0
     model.train()
-    for i, (inputs, labels) in enumerate(loader):
-        print(f"Trainstep: {i}")
+    for i, (inputs, labels) in tqdm(enumerate(loader)):
         inputs = inputs.cuda()
         labels = labels.cuda()
         optimizer.zero_grad()
@@ -150,7 +149,7 @@ def validate(loader, model, criterion, epoch):
     total = 0
     model.eval()
     with torch.no_grad():
-        for i, (inputs, labels) in enumerate(loader):
+        for i, (inputs, labels) in tqdm(enumerate(loader)):
             inputs = inputs.cuda()
             labels = labels.cuda()
             outputs = model(inputs)

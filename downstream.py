@@ -12,6 +12,7 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from models.context_free_network import ContextFreeNetwork
 from data.transforms import get_transforms_downstream_rotation
+from tqdm import tqdm
 
 set_random_seed(0)
 writer = SummaryWriter()
@@ -143,10 +144,8 @@ def train(loader, model, criterion, optimizer, epoch, scheduler):
     total_accuracy = 0
     total = 0
     model.train()
-    for i, (inputs, labels) in enumerate(loader):
-        # print(f"Trainstep: {i}")
+    for i, (inputs, labels) in tqdm(enumerate(loader)):
         inputs = inputs.cuda()
-        # print(inputs.shape)
         labels = labels.cuda()
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -178,7 +177,7 @@ def validate(loader, model, criterion, epoch):
     correct = 0
     total_x = 0
     with torch.no_grad():
-        for i, (inputs, labels) in enumerate(loader):
+        for i, (inputs, labels) in tqdm(enumerate(loader)):
             inputs = inputs.cuda()
             labels = labels.cuda()
             outputs = model(inputs)
