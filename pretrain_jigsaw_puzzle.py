@@ -33,6 +33,7 @@ def parse_arguments():
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
+    parser.add_argument('--weight_decay', type=float, default=0.01, help='weight decay')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
@@ -86,7 +87,7 @@ def main(args):
                                              pin_memory=True, drop_last=False)
 
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
@@ -97,7 +98,7 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, epoch)
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
         scheduler.step()
         val_loss, val_acc = validate(val_loader, model, criterion, epoch)
 
@@ -113,7 +114,7 @@ def main(args):
 
 
 # train one epoch over the whole training dataset.
-def train(loader, model, criterion, optimizer, epoch):
+def train(loader, model, criterion, optimizer, scheduler, epoch):
     total_loss = 0
     total_accuracy = 0
     total = 0
@@ -131,6 +132,7 @@ def train(loader, model, criterion, optimizer, epoch):
         total_loss += criterion(outputs, labels).item() * batch_size
         total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
+    scheduler.step()
 
     mean_train_loss = total_loss / total
     mean_train_accuracy = total_accuracy / total

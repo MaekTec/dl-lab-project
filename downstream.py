@@ -11,7 +11,7 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from models.context_free_network import ContextFreeNetwork
-from data.transforms import get_transforms_downstream_rotation, get_transforms_downstream, \
+from data.transforms import get_transforms_downstream_rotation, get_transforms_downstream_training, \
     get_transforms_downstream_validation
 from tqdm import tqdm
 from enum import Enum
@@ -37,7 +37,7 @@ def parse_arguments():
     parser.add_argument('--weight_init', type=str, default="ImageNet")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
-    parser.add_argument('--weight_decay', type=float, default=0.01, help='learning rate')
+    parser.add_argument('--weight_decay', type=float, default=0.01, help='weight decay')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
@@ -115,7 +115,7 @@ def main(args):
     torchsummary.summary(model, (3, args.image_size, args.image_size), args.bs)
 
     data_root = args.data_folder
-    transform = get_transforms_downstream(args)
+    transform = get_transforms_downstream_training(args)
     transform_validation = get_transforms_downstream_validation(args)
     #transform = get_transforms_downstream_rotation(args)
 
