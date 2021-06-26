@@ -134,10 +134,13 @@ def main(args):
 
     criterion = torch.nn.CrossEntropyLoss().cuda()
     #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
-    #optimizer = torch.optim.Adam(model.parameters(),betas=(0.9,0.999),weight_decay=0.1 )
-    #scheduler = CosineAnnealingLR(optimizer, T_max=15, verbose=True)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=0.1)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+
+    expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
+    logger.info(expdata)
+    logger.info('train_data {}'.format(train_data.__len__()))
+    logger.info('val_data {}'.format(val_data.__len__()))
 
     best_val_loss = np.inf
     for epoch in range(args.epochs):
