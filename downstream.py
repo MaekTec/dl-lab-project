@@ -32,8 +32,8 @@ class PretrainTask(Enum):
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
-    parser.add_argument('weight_init', type=str, default="ImageNet")
     parser.add_argument('pretrain_task', type=PretrainTask, choices=list(PretrainTask))
+    parser.add_argument('--weight_init', type=str, default="ImageNet")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
@@ -110,7 +110,7 @@ def main(args):
         return
 
     logger.info(model)
-    torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
+    torchsummary.summary(model, (3, args.image_size, args.image_size), args.bs)
 
     data_root = args.data_folder
     transform = get_transforms_downstream(args)
