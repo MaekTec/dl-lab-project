@@ -178,6 +178,17 @@ def get_transforms_pretraining_jigsaw_puzzle(args):
     return train_transform
 
 
+def get_transforms_downstream(args):
+    """ Returns the transformations for the pretraining task. """
+    train_transform = Compose([
+        RandomHorizontalFlip(),
+        ToTensor(),
+        Resize(args.image_size),
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
+    ])
+    return train_transform
+
+
 def get_transforms_downstream_rotation(args):
     """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
