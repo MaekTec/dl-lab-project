@@ -142,7 +142,7 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, epoch, scheduler)
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
@@ -156,6 +156,7 @@ def main(args):
         if val_loss < best_val_loss:
             torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
             best_val_loss = val_loss
+
 
 def train(loader, model, criterion, optimizer, scheduler, epoch):
     total_loss = 0
