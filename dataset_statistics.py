@@ -1,5 +1,4 @@
 from collections import Counter
-
 from data.CIFAR10Custom import CIFAR10Custom
 
 data_root = "dataset"

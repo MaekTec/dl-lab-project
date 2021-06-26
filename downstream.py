@@ -83,8 +83,10 @@ def main(args):
     # model
     if args.resnet:
         model = ResNet18Backbone(num_classes=10).cuda()
+        # torch.nn.init.zeros_(model.net.fc.weight)
     else:
         model = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=10).cuda()
+        # torch.nn.init.zeros_(model.net.mlp_head[1].weight)
 
     if args.pretrain_task is PretrainTask.none:
         pass
@@ -92,32 +94,48 @@ def main(args):
     elif args.pretrain_task is PretrainTask.rotation:
         model_dict = model.state_dict()
         pretrained_dict = torch.load(args.weight_init)
-        del pretrained_dict['net.mlp_head.1.weight']
-        del pretrained_dict['net.mlp_head.1.bias']
+
+        if args.resnet:
+            del pretrained_dict['net.fc.weight']
+            del pretrained_dict['net.fc.bias']
+        else:
+            del pretrained_dict['net.mlp_head.1.weight']
+            del pretrained_dict['net.mlp_head.1.bias']
+
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
 
-        # replace the last two MLP layers as done in paper.
-        #num_ftrs = model.net.mlp_head[1].in_features
-        #model.net.mlp_head[0] = nn.Identity()
-        #model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
-        #torch.nn.init.zeros_(model.net.mlp_head[1].weight)
-
     elif args.pretrain_task is PretrainTask.jigsaw_puzzle:
-        encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=64).cuda()  # TODO
+        model_dict = model.state_dict()
+        pretrained_dict = torch.load(args.weight_init)
 
-        num_features = encoder.net.mlp_head[1].in_features
-        encoder.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=10).cuda()
-        torch.nn.init.zeros_(encoder.net.mlp_head[1].weight)
-        #model = ContextFreeNetwork(encoder, 512 * 4, 24).cuda()  # out_features of ViT * number of tiles
-        #model.load_state_dict(torch.load(args.weight_init))
+        if args.resnet:
+            del pretrained_dict['encoder.net.fc.weight']
+            del pretrained_dict['encoder.net.fc.bias']
+        else:
+            del pretrained_dict['encoder.net.mlp_head.1.weight']
+            del pretrained_dict['encoder.net.mlp_head.1.bias']
 
-        # replacing the last layer
-        #num_ftrs = model.fc9.in_features
-        #model.fc9 = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
-        #torch.nn.init.zeros_(model.fc9.weight)
+        for key in list(pretrained_dict.keys()):
+            pretrained_dict[key.replace("encoder.", "")] = pretrained_dict.pop(key)
+        for i in range(7, 10):
+            del pretrained_dict[f'fc{i}.weight']
+            del pretrained_dict[f'fc{i}.bias']
+
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
     else:
-        return
+        raise ValueError
+
+    if args.fine_tune_last_layer:
+        disable_gradients(model)
+        if args.resnet:
+            last_layer = model.net.fc
+        else:
+            last_layer = model.net.mlp_head
+
+        for x in last_layer.parameters():
+            x.requires_grad = True
 
     logger.info(model)
     torchsummary.summary(model, (3, args.image_size, args.image_size), args.bs)
