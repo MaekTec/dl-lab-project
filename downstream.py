@@ -126,19 +126,10 @@ def main(args):
     transform = get_transforms_downstream_training(args)
     transform_validation = get_transforms_downstream_validation(args)
 
-    train_data = CIFAR10Custom(data_root,
-                               train=True,
-                               download=True,
-                               transform=transform,
-                               unlabeled=False)
+    train_data = CIFAR10Custom(data_root, train=True, download=True, transform=transform, unlabeled=False)
+    val_data = CIFAR10Custom(data_root, val=True, download=True, transform=transform_validation, unlabeled=False)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=2,
                                                pin_memory=True, drop_last=True)
-
-    val_data = CIFAR10Custom(data_root,
-                             val=True,
-                             download=True,
-                             transform=transform_validation,
-                             unlabeled=False)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=True, num_workers=2,
                                              pin_memory=True, drop_last=True)
 
