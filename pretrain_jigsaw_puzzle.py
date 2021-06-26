@@ -24,7 +24,6 @@ to avoid learning of shortcuts:
 """
 
 set_random_seed(0)
-global_step = 0
 writer = SummaryWriter()
 
 
@@ -35,7 +34,7 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
-    parser.add_argument('--image-size', type=int, default=128, help='size of image')
+    parser.add_argument('--image-size', type=int, default=64, help='size of image')
     parser.add_argument('--num-tiles-per-dim', type=int, default=3, help='in how many tiles to split the image')
     parser.add_argument('--number-of-permutations', type=int, default=64, help='number of different permutations')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
@@ -64,17 +63,16 @@ def main(args):
     logger = get_logger(args.logs_folder, args.exp_name)
 
     # build model
+    encoder_out_dim = 512
     if args.resnet:
-        encoder = ResNet18Backbone(pretrained=False, num_classes=args.number_of_permutations)
+        encoder = ResNet18Backbone(num_classes=encoder_out_dim).cuda()  # TODO
 
     else:
-        encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=args.number_of_permutations).cuda()
+        encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=encoder_out_dim).cuda()
 
-    num_features = encoder.net.mlp_head[1].in_features
-    encoder.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=512).cuda()
-    model = ContextFreeNetwork(encoder, 512*args.splits, args.number_of_permutations).cuda()
+    model = ContextFreeNetwork(encoder, encoder_out_dim*args.splits, args.number_of_permutations).cuda()
 
-    print(model)
+    logger.info(model)
     torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
 
     # load dataset
@@ -87,7 +85,6 @@ def main(args):
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=4,
                                              pin_memory=True, drop_last=False)
 
-    # TODO: loss function
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)

@@ -14,7 +14,6 @@ from models.context_free_network import ContextFreeNetwork
 from data.transforms import get_transforms_downstream_rotation
 
 set_random_seed(0)
-global_step = 0
 writer = SummaryWriter()
 
 
@@ -27,16 +26,17 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
     parser.add_argument('--bs', type=int, default=64, help='batch_size')
     parser.add_argument('--epochs', type=int, default=50,help='epochs')
+    parser.add_argument('--image-size', type=int, default=128, help='size of image')
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
 
-    hparam_keys = ["lr", "bs"]
+    hparam_keys = ["pretrain_task", "lr", "bs", "epochs", "image_size"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
 
-    args.output_folder = check_dir(os.path.join(args.output_root, 'pretrain_rotation', args.exp_name))
+    args.output_folder = check_dir(os.path.join(args.output_root, 'downstream', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
@@ -62,7 +62,7 @@ def main(args):
     # model
     if args.pretrain_task == 'rotation':
 
-        pretrained_model = ViTBackbone(image_size=128, patch_size=16, num_classes=4).cuda()
+        pretrained_model = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=4).cuda()
         pretrained_model.load_state_dict(torch.load(args.weight_init))
         # replace the last two MLP layers as done in paper.
         num_ftrs = pretrained_model.net.mlp_head[1].in_features
@@ -70,17 +70,19 @@ def main(args):
         pretrained_model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
         torch.nn.init.zeros_(pretrained_model.net.mlp_head[1].weight)
 
-    elif args.pretrain_task == 'jigsaw':
-        encoder = ViTBackbone().cuda()
+    elif args.pretrain_task == 'jigsaw_puzzle':
+        encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=64).cuda()  # TODO
+
         num_features = encoder.net.mlp_head[1].in_features
-        encoder.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=512).cuda()
-        pretrained_model = ContextFreeNetwork(encoder, 512 * 4, 24).cuda()  # out_features of ViT * number of tiles
-        pretrained_model.load_state_dict(torch.load(args.weight_init))
+        encoder.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=10).cuda()
+        torch.nn.init.zeros_(encoder.net.mlp_head[1].weight)
+        #pretrained_model = ContextFreeNetwork(encoder, 512 * 4, 24).cuda()  # out_features of ViT * number of tiles
+        #pretrained_model.load_state_dict(torch.load(args.weight_init))
 
         # replacing the last layer
-        num_ftrs = pretrained_model.fc9.in_features
-        pretrained_model.fc9 = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
-        torch.nn.init.zeros_(pretrained_model.fc9.weight)
+        #num_ftrs = pretrained_model.fc9.in_features
+        #pretrained_model.fc9 = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
+        #torch.nn.init.zeros_(pretrained_model.fc9.weight)
     else:
         return
     #print(pretrained_model)
