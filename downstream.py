@@ -36,6 +36,7 @@ def parse_arguments():
     parser.add_argument('--weight_init', type=str, default="ImageNet")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
+    parser.add_argument('--weight_decay', type=float, default=0.01, help='learning rate')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
@@ -134,7 +135,7 @@ def main(args):
 
     criterion = torch.nn.CrossEntropyLoss().cuda()
     #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=0.1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
