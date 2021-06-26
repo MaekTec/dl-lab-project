@@ -181,7 +181,21 @@ def get_transforms_pretraining_jigsaw_puzzle(args):
 def get_transforms_downstream(args):
     """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
-        RandomHorizontalFlip(),
+        transforms.RandomAffine(degrees=20, shear=10),
+        # random crop and aspect ratio
+        transforms.RandomResizedCrop((args.image_size, args.image_size), scale=(0.9, 1.0), ratio=(3. / 4., 4. / 3.)),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1),
+        transforms.GaussianBlur(5, (0.1, 2.0)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        ToTensor(),
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
+    ])
+    return train_transform
+
+
+def get_transforms_downstream_validation(args):
+    """ Returns the transformations for the pretraining task. """
+    train_transform = Compose([
         ToTensor(),
         Resize(args.image_size),
         Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())

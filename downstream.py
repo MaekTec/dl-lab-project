@@ -11,7 +11,8 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from models.context_free_network import ContextFreeNetwork
-from data.transforms import get_transforms_downstream_rotation, get_transforms_downstream
+from data.transforms import get_transforms_downstream_rotation, get_transforms_downstream, \
+    get_transforms_downstream_validation
 from tqdm import tqdm
 from enum import Enum
 import torchsummary
@@ -115,6 +116,7 @@ def main(args):
 
     data_root = args.data_folder
     transform = get_transforms_downstream(args)
+    transform_validation = get_transforms_downstream_validation(args)
     #transform = get_transforms_downstream_rotation(args)
 
     train_data = CIFAR10Custom(data_root,
@@ -128,7 +130,7 @@ def main(args):
     val_data = CIFAR10Custom(data_root,
                              val=True,
                              download=True,
-                             transform=transform,
+                             transform=transform_validation,
                              unlabeled=False)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=True, num_workers=2,
                                              pin_memory=True, drop_last=True)
