@@ -78,7 +78,7 @@ def disable_gradients(model) -> None:
 
 
 def main(args):
-    logger = get_logger(args.output_folder, args.exp_name)
+    logger = get_logger(args.logs_folder, args.exp_name)
 
     # model
     if args.resnet:
