@@ -46,7 +46,7 @@ def parse_arguments():
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
 
-    hparam_keys = ["lr", "bs", "epochs", "image_size", "num_tiles_per_dim", "number_of_permutations", "resnet"]
+    hparam_keys = ["lr", "weight_decay", "bs", "epochs", "image_size", "num_tiles_per_dim", "number_of_permutations", "resnet"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)

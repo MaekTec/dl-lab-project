@@ -11,7 +11,7 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from models.context_free_network import ContextFreeNetwork
-from data.transforms import get_transforms_downstream_rotation, get_transforms_downstream_training, \
+from data.transforms import get_transforms_downstream_training, \
     get_transforms_downstream_validation
 from tqdm import tqdm
 from enum import Enum
@@ -35,11 +35,14 @@ def parse_arguments():
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('pretrain_task', type=PretrainTask, choices=list(PretrainTask))
     parser.add_argument('--weight-init', type=str, default="ImageNet")
+    parser.add_argument("--fine-tune-last-layer", type=str2bool, nargs='?',
+                        const=True, default=False,
+                        help="Fine tune only the last layer")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--weight-decay', type=float, default=0.01, help='weight decay')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
-    parser.add_argument('--epochs', type=int, default=15, help='epochs')
+    parser.add_argument('--epochs', type=int, default=60, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
                         const=True, default=False,
@@ -48,7 +51,7 @@ def parse_arguments():
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
 
-    hparam_keys = ["pretrain_task", "lr", "bs", "epochs", "image_size", "resnet"]
+    hparam_keys = ["pretrain_task", "fine_tune_last_layer", "lr", "weight_decay", "bs", "epochs", "image_size", "resnet"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
@@ -87,14 +90,18 @@ def main(args):
         pass
 
     elif args.pretrain_task is PretrainTask.rotation:
+        model_dict = model.state_dict()
+        pretrained_dict = torch.load(args.weight_init)
+        del pretrained_dict['net.mlp_head.1.weight']
+        del pretrained_dict['net.mlp_head.1.bias']
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
 
-        model = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=4).cuda()
-        model.load_state_dict(torch.load(args.weight_init))
         # replace the last two MLP layers as done in paper.
-        num_ftrs = model.net.mlp_head[1].in_features
-        model.net.mlp_head[0] = nn.Identity()
-        model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
-        torch.nn.init.zeros_(model.net.mlp_head[1].weight)
+        #num_ftrs = model.net.mlp_head[1].in_features
+        #model.net.mlp_head[0] = nn.Identity()
+        #model.net.mlp_head[1] = nn.Linear(in_features=num_ftrs, out_features=10).cuda()
+        #torch.nn.init.zeros_(model.net.mlp_head[1].weight)
 
     elif args.pretrain_task is PretrainTask.jigsaw_puzzle:
         encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=64).cuda()  # TODO
