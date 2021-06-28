@@ -121,6 +121,25 @@ class ColorChannelJitter:
         return x
 
 
+class DivideInGrid:
+
+    def __init__(self, patch_size, overlap):  # both in pixel
+        self.patch_size = patch_size
+        self.overlap = overlap
+
+    def __call__(self, x):
+        # x has shape (C x H x W)
+        assert x.size()[1] == x.size()[2]
+        image_size = x.size()[1]
+        num_patches_per_dim = int(image_size / self.patch_size - self.overlap)
+        patches = []
+        for i in range(self.num_tiles_per_dim):
+            for j in range(self.num_tiles_per_dim):
+                patches.append(x[:, j * (self.patch_size - self.overlap):j * (self.patch_size - self.overlap) + self.patch_size,
+                               i * (self.patch_size - self.overlap):i * (self.patch_size - self.overlap) + self.patch_size])
+        return patches
+
+
 class ApplyOnList:
     """ Apply a transformation to a list of images (e.g. after applying ImgRotation)"""
 
@@ -173,6 +192,23 @@ def get_transforms_pretraining_jigsaw_puzzle(args):
         ApplyOnList(RandomCrop(args.image_size)),
         ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
         ApplyOnList(RandomGrayscale(p=0.3)),
+        CollateList()
+    ])
+    return train_transform
+
+
+def get_transforms_pretraining_contrastive_predictive_coding(args):
+    """ Returns the transformations for the pretraining task. """
+    train_transform = Compose([
+        ToTensor(),
+        Resize(int(args.image_size*4*300/256)),
+        RandomCrop(args.image_size*4),
+        RandomHorizontalFlip(),
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()),
+        Grayscale(),
+        DivideInGrid(args.image_size, int(args.image_size/2)),
+        ApplyOnList(RandomCrop(args.image_size-4)),
+        ApplyOnList(Resize(args.image_size)),
         CollateList()
     ])
     return train_transform
