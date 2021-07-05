@@ -131,13 +131,13 @@ class DivideInGrid:
         # x has shape (C x H x W)
         assert x.size()[1] == x.size()[2]
         image_size = x.size()[1]
-        num_patches_per_dim = int(image_size / self.patch_size - self.overlap)
+        num_patches_per_dim = int(image_size / (self.patch_size - self.overlap)) - 1
         patches = []
-        for i in range(self.num_tiles_per_dim):
-            for j in range(self.num_tiles_per_dim):
-                patches.append(x[:, j * (self.patch_size - self.overlap):j * (self.patch_size - self.overlap) + self.patch_size,
-                               i * (self.patch_size - self.overlap):i * (self.patch_size - self.overlap) + self.patch_size])
-        return patches
+        for i in range(num_patches_per_dim):
+            for j in range(num_patches_per_dim):
+                patches.append(x[:, i * (self.patch_size - self.overlap):i * (self.patch_size - self.overlap) + self.patch_size,
+                               j * (self.patch_size - self.overlap):j * (self.patch_size - self.overlap) + self.patch_size])
+        return torch.stack(patches, dim=0)  # (N, H, W)
 
 
 class ApplyOnList:
@@ -147,9 +147,13 @@ class ApplyOnList:
         self.transform = transform
 
     def __call__(self, x):
-        images, labels = x
-        images = [self.transform(i) for i in images]
-        return images, labels
+        if isinstance(x, torch.Tensor):
+            x = [self.transform(i) for i in x]
+            return torch.stack(x)
+        else:
+            images, labels = x
+            images = [self.transform(i) for i in images]
+            return images, labels
 
 
 class ToTensorAfterRotations:
@@ -205,11 +209,10 @@ def get_transforms_pretraining_contrastive_predictive_coding(args):
         RandomCrop(args.image_size*4),
         RandomHorizontalFlip(),
         Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()),
-        Grayscale(),
+        Grayscale(num_output_channels=3),
         DivideInGrid(args.image_size, int(args.image_size/2)),
         ApplyOnList(RandomCrop(args.image_size-4)),
         ApplyOnList(Resize(args.image_size)),
-        CollateList()
     ])
     return train_transform
 

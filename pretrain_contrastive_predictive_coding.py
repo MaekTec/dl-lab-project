@@ -62,7 +62,7 @@ def parse_arguments():
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
-    args.splits = args.num_tiles_per_dim**2
+    #args.splits = args.num_tiles_per_dim**2
 
     return args
 
@@ -78,10 +78,10 @@ def main(args):
         encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=encoder_out_dim).cuda()
 
     num_patches_in_row = 7
-    model = ContrastivePredictiveCodingNetwork(encoder, encoder_out_dim, num_patches_in_row).cuda()
+    model = ContrastivePredictiveCodingNetwork(encoder, encoder_out_dim, num_patches_in_row, 7).cuda()
 
     logger.info(model)
-    torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
+    #torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
 
     # load dataset
     data_root = args.data_folder
@@ -92,10 +92,6 @@ def main(args):
                                                pin_memory=True, drop_last=True)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=4,
                                              pin_memory=True, drop_last=False)
-
-    #criterion = torch.nn.CrossEntropyLoss()
-    def info_nce(output):
-
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
@@ -108,8 +104,8 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
-        val_loss, val_acc = validate(val_loader, model, criterion, epoch)
+        train_loss, train_acc = train(train_loader, model, optimizer, scheduler, epoch)
+        val_loss, val_acc = validate(val_loader, model, epoch)
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
@@ -123,60 +119,59 @@ def main(args):
 
 
 # train one epoch over the whole training dataset.
-def train(loader, model, criterion, optimizer, scheduler, epoch):
+def train(loader, model, optimizer, scheduler, epoch):
     total_loss = 0
-    total_accuracy = 0
+    #total_accuracy = 0
     total = 0
     model.train()
-    for i, (inputs, labels) in tqdm(enumerate(loader)):
+    for i, inputs in tqdm(enumerate(loader)):
         inputs = inputs.cuda()
-        labels = labels.cuda()
+        #labels = labels.cuda()
         optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
+        loss = model(inputs)
         loss.backward()
         optimizer.step()
 
-        batch_size = labels.size(0)
-        total_loss += criterion(outputs, labels).item() * batch_size
-        total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
+        batch_size = inputs.size(0)
+        total_loss += loss.item() * batch_size
+        #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
     scheduler.step()
 
     mean_train_loss = total_loss / total
-    mean_train_accuracy = total_accuracy / total
+    #mean_train_accuracy = total_accuracy / total
     scalar_dict = {}
     scalar_dict['Loss/train'] = mean_train_loss
-    scalar_dict['Accuracy/train'] = mean_train_accuracy
+    #scalar_dict['Accuracy/train'] = mean_train_accuracy
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
-    return mean_train_loss, mean_train_accuracy
+    return mean_train_loss #, mean_train_accuracy
 
 
 # validation function.
-def validate(loader, model, criterion, epoch):
+def validate(loader, model, epoch):
     total_loss = 0
-    total_accuracy = 0
+    #total_accuracy = 0
     total = 0
     model.eval()
     with torch.no_grad():
-        for i, (inputs, labels) in tqdm(enumerate(loader)):
+        for i, inputs in tqdm(enumerate(loader)):
             inputs = inputs.cuda()
-            labels = labels.cuda()
-            outputs = model(inputs)
+            #labels = labels.cuda()
+            loss = model(inputs)
 
-            batch_size = labels.size(0)
-            total_loss += criterion(outputs, labels).item() * batch_size
-            total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
+            batch_size = inputs.size(0)
+            total_loss += loss.item() * batch_size
+            #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
             total += batch_size
 
     mean_val_loss = total_loss / total
-    mean_val_accuracy = total_accuracy / total
+    #mean_val_accuracy = total_accuracy / total
     scalar_dict = {}
     scalar_dict['Loss/val'] = mean_val_loss
-    scalar_dict['Accuracy/val'] = mean_val_accuracy
+    #scalar_dict['Accuracy/val'] = mean_val_accuracy
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
 
-    return mean_val_loss, mean_val_accuracy
+    return mean_val_loss#, mean_val_accuracy
 
 
 if __name__ == '__main__':
