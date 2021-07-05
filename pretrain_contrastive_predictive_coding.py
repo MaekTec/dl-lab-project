@@ -4,7 +4,9 @@ import argparse
 import torch
 import torch.nn as nn
 from pprint import pprint
-from data.transforms import get_transforms_pretraining_jigsaw_puzzle
+from data.transforms import get_transforms_pretraining_jigsaw_puzzle, \
+    get_transforms_pretraining_contrastive_predictive_coding
+from models.contrastive_predictive_coding_network import ContrastivePredictiveCodingNetwork
 from utils import check_dir, set_random_seed, get_logger, accuracy, save_in_log, str2bool
 from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
@@ -14,8 +16,21 @@ from models.context_free_network import ContextFreeNetwork
 from tqdm import tqdm
 
 """
-https://arxiv.org/pdf/1807.03748.pdf
+https://arxiv.org/pdf/1905.09272.pdf (this)
+- predict from top to down and vise-versa
+- 80x80 pixel patches with 36 pixel stride?
+- resize the image to 300×300 pixels and randomly ex-tract a 260×260 pixel crop,
+  then divide this image into a 6×6 grid of 80×80 patches
+- predict from left to right and vise-versa
+- randomly drop 2 of 3 color channels
+- data augmentation (shearing, rotation, elastic deformations and color transforms)
+- 
 
+Helpful implementations:
+https://github.com/SeonghoBaek/CPC/blob/master/cpc.py
+https://github.com/davidtellez/contrastive-predictive-coding-images
+
+https://arxiv.org/pdf/1807.03748.pdf (original)
 """
 
 set_random_seed(0)
@@ -51,7 +66,6 @@ def parse_arguments():
 
     return args
 
-
 def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
@@ -63,14 +77,15 @@ def main(args):
     else:
         encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=encoder_out_dim).cuda()
 
-    model = ContextFreeNetwork(encoder, encoder_out_dim*args.splits, args.number_of_permutations).cuda()
+    num_patches_in_row = 7
+    model = ContrastivePredictiveCodingNetwork(encoder, encoder_out_dim, num_patches_in_row).cuda()
 
     logger.info(model)
     torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
 
     # load dataset
     data_root = args.data_folder
-    train_transform = get_transforms_pretraining_jigsaw_puzzle(args)
+    train_transform = get_transforms_pretraining_contrastive_predictive_coding(args)
     train_data = CIFAR10Custom(data_root, train=True, transform=train_transform, download=True, unlabeled=True)
     val_data = CIFAR10Custom(data_root, val=True, transform=train_transform, download=True, unlabeled=True)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=4,
@@ -78,7 +93,10 @@ def main(args):
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=4,
                                              pin_memory=True, drop_last=False)
 
-    criterion = torch.nn.CrossEntropyLoss()
+    #criterion = torch.nn.CrossEntropyLoss()
+    def info_nce(output):
+
+
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
