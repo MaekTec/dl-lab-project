@@ -72,7 +72,7 @@ class ContrastivePredictiveCodingNetwork(nn.Module):
             preds_i = torch.reshape(preds_i.permute(0, 2, 3, 1), (-1, self.target_dim))  # (N*HLC*WLC, DP)
             logits = torch.matmul(preds_i, targets.T)  # (N*HLC*WLC, N*HL*WL)
 
-            b = torch.arange(total_elements) // (col_dim_i * rows)
+            b = torch.div(torch.arange(total_elements), (col_dim_i * rows), rounding_mode='trunc')
             col = torch.arange(total_elements) % (col_dim_i * rows)
             labels = b * col_dim * rows + (i + 1) * rows + col
             labels = labels.cuda()
