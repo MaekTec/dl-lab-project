@@ -141,7 +141,7 @@ def train(loader, model, optimizer, scheduler, epoch):
         optimizer.step()
 
         batch_size = inputs.size(0)
-        total_loss += loss.item() * batch_size
+        total_loss += loss.detach().item() * batch_size
         total_accuracy += acc * batch_size
         #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
