@@ -94,9 +94,9 @@ def main(args):
     train_transform = get_transforms_pretraining_contrastive_predictive_coding(args)
     train_data = CIFAR10Custom(data_root, train=True, transform=train_transform, download=True, unlabeled=True)
     val_data = CIFAR10Custom(data_root, val=True, transform=train_transform, download=True, unlabeled=True)
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=4,
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=1,
                                                pin_memory=True, drop_last=True)
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=4,
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=1,
                                              pin_memory=True, drop_last=False)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
