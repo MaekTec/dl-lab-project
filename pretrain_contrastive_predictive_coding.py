@@ -104,13 +104,13 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss = train(train_loader, model, optimizer, scheduler, epoch)
-        val_loss = validate(val_loader, model, epoch)
+        train_loss, train_acc = train(train_loader, model, optimizer, scheduler, epoch)
+        val_loss, val_acc = validate(val_loader, model, epoch)
 
         logger.info('Training loss: {}'.format(train_loss))
-        #logger.info('Training accuracy: {}'.format(train_acc))
+        logger.info('Training accuracy: {}'.format(train_acc))
         logger.info('Validation loss: {}'.format(val_loss))
-        #logger.info('Validation accuracy: {}'.format(val_acc))
+        logger.info('Validation accuracy: {}'.format(val_acc))
 
         # save model
         if val_loss < best_val_loss:
@@ -121,59 +121,63 @@ def main(args):
 # train one epoch over the whole training dataset.
 def train(loader, model, optimizer, scheduler, epoch):
     total_loss = 0
-    #total_accuracy = 0
+    total_accuracy = 0
     total = 0
     model.train()
     for i, inputs in tqdm(enumerate(loader)):
-        if (i+1) % 200 == 0:
+        if (i+1) % 5 == 0:
             break
         inputs = inputs.cuda()
         #labels = labels.cuda()
         optimizer.zero_grad()
-        loss = model(inputs)
+        loss, acc = model(inputs)
         loss.backward()
         optimizer.step()
 
         batch_size = inputs.size(0)
         total_loss += loss.item() * batch_size
+        total_accuracy += acc * batch_size
         #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
     scheduler.step()
 
     mean_train_loss = total_loss / total
-    #mean_train_accuracy = total_accuracy / total
+    mean_train_accuracy = total_accuracy / total
     scalar_dict = {}
     scalar_dict['Loss/train'] = mean_train_loss
-    #scalar_dict['Accuracy/train'] = mean_train_accuracy
+    scalar_dict['Accuracy/train'] = mean_train_accuracy
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
-    return mean_train_loss #, mean_train_accuracy
+    return mean_train_loss, mean_train_accuracy
 
 
 # validation function.
 def validate(loader, model, epoch):
     total_loss = 0
-    #total_accuracy = 0
+    total_accuracy = 0
     total = 0
     model.eval()
     with torch.no_grad():
         for i, inputs in tqdm(enumerate(loader)):
+            if (i + 1) % 5 == 0:
+                break
             inputs = inputs.cuda()
             #labels = labels.cuda()
-            loss = model(inputs)
+            loss, acc = model(inputs)
 
             batch_size = inputs.size(0)
             total_loss += loss.item() * batch_size
+            total_accuracy += acc * batch_size
             #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
             total += batch_size
 
     mean_val_loss = total_loss / total
-    #mean_val_accuracy = total_accuracy / total
+    mean_val_accuracy = total_accuracy / total
     scalar_dict = {}
     scalar_dict['Loss/val'] = mean_val_loss
-    #scalar_dict['Accuracy/val'] = mean_val_accuracy
+    scalar_dict['Accuracy/val'] = mean_val_accuracy
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
 
-    return mean_val_loss#, mean_val_accuracy
+    return mean_val_loss, mean_val_accuracy
 
 
 if __name__ == '__main__':

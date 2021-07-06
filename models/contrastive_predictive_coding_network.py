@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from utils import accuracy
 
 
 class PixelCNN(nn.Module):
@@ -32,7 +33,8 @@ class PixelCNN(nn.Module):
 
 class ContrastivePredictiveCodingNetwork(nn.Module):
 
-    def __init__(self, encoder, encoder_dim, num_patches_per_dim, autoregressive_dim=256, target_dim=64, emb_scale=0.1, steps_to_ignore=2, steps_to_predict=3):
+    def __init__(self, encoder, encoder_dim, num_patches_per_dim, autoregressive_dim=256, target_dim=64, emb_scale=0.1,
+                 steps_to_ignore=2, steps_to_predict=3):
         super().__init__()
         self.encoder = encoder
         self.pixel_cnn = PixelCNN(encoder_dim, num_patches_per_dim-1, autoregressive_dim)  # TODO: correct?
@@ -43,7 +45,9 @@ class ContrastivePredictiveCodingNetwork(nn.Module):
         self.steps_to_predict = steps_to_predict
 
         self.conv_targets = nn.Conv2d(encoder_dim, out_channels=target_dim, kernel_size=(1, 1))
-        self.conv_preds = nn.Conv2d(encoder_dim, out_channels=target_dim, kernel_size=(1, 1))
+        self.conv_preds = nn.ModuleList()
+        for _ in range(steps_to_ignore, steps_to_predict):
+            self.conv_preds.append(nn.Conv2d(encoder_dim, out_channels=target_dim, kernel_size=(1, 1)))
         self.cross_entropy = nn.CrossEntropyLoss()
 
     def forward(self, x):
@@ -53,7 +57,9 @@ class ContrastivePredictiveCodingNetwork(nn.Module):
         latents = torch.reshape(latents, (x.size()[0], self.num_patches_per_dim, self.num_patches_per_dim, latents.size()[2]))  # (N, HL, WL, DE)
         latents = latents.permute(0, 3, 1, 2)  # (N, DE, HL, WL)
 
-        loss = 0.0
+        total_loss = 0.0
+        total_accuracy = 0
+        total = 0
         context = self.pixel_cnn(latents)  # (N, DE, HL, WL)
         targets = self.conv_targets(latents)  # (N, DT , HL, WL)
         batch_dim, _, col_dim, rows = targets.size()
@@ -61,7 +67,7 @@ class ContrastivePredictiveCodingNetwork(nn.Module):
         for i in range(self.steps_to_ignore, self.steps_to_predict):
             col_dim_i = col_dim - i - 1
             total_elements = batch_dim * col_dim_i * rows
-            preds_i = self.conv_preds(context)  # (N, DT, HL, WL)
+            preds_i = self.conv_preds[i-self.steps_to_ignore](context)  # (N, DT, HL, WL)
             preds_i = preds_i[:, :, :-(i+1), :] * self.emb_scale   # (N, DP, HLC, WLC)
             preds_i = torch.reshape(preds_i.permute(0, 2, 3, 1), (-1, self.target_dim))  # (N*HLC*WLC, DP)
             logits = torch.matmul(preds_i, targets.T)  # (N*HLC*WLC, N*HL*WL)
@@ -69,6 +75,15 @@ class ContrastivePredictiveCodingNetwork(nn.Module):
             b = torch.arange(total_elements) // (col_dim_i * rows)
             col = torch.arange(total_elements) % (col_dim_i * rows)
             labels = b * col_dim * rows + (i + 1) * rows + col
+            labels = labels.cuda()
+
             # unsqueeze to have a batch of 1
-            loss += self.cross_entropy(torch.unsqueeze(logits.T, dim=0), torch.unsqueeze(labels, dim=0).cuda())
-        return loss
+            logits_batch = torch.unsqueeze(logits.T, dim=0)  # (1, (N*HL*WL, N*HLC*WLC))
+            labels_batch = torch.unsqueeze(labels, dim=0)  # (1, N*HLC*WLC)
+            print(logits_batch.size())
+            total_loss += self.cross_entropy(logits_batch, labels_batch)
+            total_accuracy += accuracy(logits, labels)[0].item()
+            total += 1
+        loss = total_loss / total
+        acc = total_accuracy / total
+        return loss, acc
