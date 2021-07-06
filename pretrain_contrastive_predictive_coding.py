@@ -27,7 +27,6 @@ https://arxiv.org/pdf/1905.09272.pdf (this)
 - 
 
 TODO:
-- downstream
 - larger epoch
 - transforms
 - add args?

@@ -160,7 +160,7 @@ def main(args):
         model.load_state_dict(model_dict)
 
         encoder = model
-        model = ContrastivePredictiveCodingNetworkLinearClassification(encoder, encoder_dim, 7, 10)
+        model = ContrastivePredictiveCodingNetworkLinearClassification(encoder, encoder_dim, 7, 10).cuda()
         last_layer = model.fc
 
         input_dims = (7*7, 3, args.image_size, args.image_size)
