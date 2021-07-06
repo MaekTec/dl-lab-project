@@ -133,16 +133,16 @@ def train(loader, model, optimizer, scheduler, epoch):
     for i, inputs in tqdm(enumerate(loader)):
         if (i+1) % 200 == 0:
             break
-        #inputs = inputs.cuda()
+        inputs = inputs.cuda()
         #labels = labels.cuda()
-        #optimizer.zero_grad()
-        #loss, acc = model(inputs)
-        #loss.backward()
-        #optimizer.step()
+        optimizer.zero_grad()
+        loss, acc = model(inputs)
+        loss.backward()
+        optimizer.step()
 
         batch_size = inputs.size(0)
-        #total_loss += loss.item() * batch_size
-        #total_accuracy += acc * batch_size
+        total_loss += loss.item() * batch_size
+        total_accuracy += acc * batch_size
         #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
     scheduler.step()
@@ -166,13 +166,13 @@ def validate(loader, model, epoch):
         for i, inputs in tqdm(enumerate(loader)):
             if (i + 1) % 200 == 0:
                 break
-            #inputs = inputs.cuda()
+            inputs = inputs.cuda()
             #labels = labels.cuda()
-            #loss, acc = model(inputs)
+            loss, acc = model(inputs)
 
             batch_size = inputs.size(0)
-            #total_loss += loss.item() * batch_size
-            #total_accuracy += acc * batch_size
+            total_loss += loss.item() * batch_size
+            total_accuracy += acc * batch_size
             #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
             total += batch_size
 

@@ -137,7 +137,7 @@ class DivideInGrid:
             for j in range(num_patches_per_dim):
                 patches.append(x[:, i * (self.patch_size - self.overlap):i * (self.patch_size - self.overlap) + self.patch_size,
                                j * (self.patch_size - self.overlap):j * (self.patch_size - self.overlap) + self.patch_size])
-        return torch.stack(patches, dim=0)  # (N, H, W)
+        return patches  # (N, H, W)
 
 
 class ApplyOnList:
@@ -147,13 +147,13 @@ class ApplyOnList:
         self.transform = transform
 
     def __call__(self, x):
-        if isinstance(x, torch.Tensor):
-            x = [self.transform(i) for i in x]
-            return torch.stack(x)
-        else:
+        if isinstance(x, tuple):
             images, labels = x
             images = [self.transform(i) for i in images]
             return images, labels
+        else:
+            x = [self.transform(i) for i in x]
+            return x
 
 
 class ToTensorAfterRotations:
@@ -166,9 +166,13 @@ class ToTensorAfterRotations:
 
 class CollateList:
     def __call__(self, x):
-        images, labels = x
-        x = torch.stack(images, dim=0)
-        return x, labels
+        if isinstance(x, tuple):
+            images, labels = x
+            x = torch.stack(images, dim=0)
+            return x, labels
+        else:
+            x = torch.stack(x, dim=0)
+            return x
 
 
 def get_transforms_pretraining_rotation(args):
@@ -213,6 +217,7 @@ def get_transforms_pretraining_contrastive_predictive_coding(args):
         DivideInGrid(args.image_size, int(args.image_size/2)),
         ApplyOnList(RandomCrop(args.image_size-4)),
         ApplyOnList(Resize(args.image_size)),
+        CollateList()
     ])
     return train_transform
 
