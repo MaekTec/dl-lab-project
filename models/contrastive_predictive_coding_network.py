@@ -69,40 +69,6 @@ class ContrastivePredictiveCodingNetwork(nn.Module):
             b = torch.arange(total_elements) // (col_dim_i * rows)
             col = torch.arange(total_elements) % (col_dim_i * rows)
             labels = b * col_dim * rows + (i + 1) * rows + col
+            # unsqueeze to have a batch of 1
             loss += self.cross_entropy(torch.unsqueeze(logits.T, dim=0), torch.unsqueeze(labels, dim=0).cuda())
         return loss
-
-
-"""
-class ContrastivePredictiveCodingNetwork(nn.Module):
-
-    def __init__(self, encoder, encoder_dim, num_patches_in_row, max_k=5):
-        super().__init__()
-        self.encoder = encoder
-        self.num_patches_in_row = num_patches_in_row
-        self.max_k = max_k
-        self.gru = torch.nn.GRU(input_size=encoder_dim, hidden_size=256, num_layers=1, bidirectional=False, batch_first=True)
-        self.Ws = nn.ModuleList([nn.Linear(256, encoder_dim) for i in range(self.max_k)])
-
-    def forward(self, x):
-        # x has shape (N, L, 1, H, W), L=7*7 in default setting and H=W=64
-        seq_length = x.size()[1]
-        t = torch.randint(0, seq_length - self.num_patches_in_row)
-        t_end_of_row = t + (self.num_patches_in_row - t % self.num_patches_in_row) - 1
-
-        z = torch.stack([self.encoder(x[:, i, ...]) for i in range(seq_length)], dim=1)  # (N, L, encoder_dim)
-        output, h_n = self.gru(z[:, t_end_of_row, :])  # (N, L, encoder_dim)
-        c = output[:, -1, :]  # (N, encoder_dim)
-        c_fc = [Wk(c) for Wk in self.Ws]
-
-
-        c_size = c.size()
-        f = torch.zeros((c_size[0], c_size[1], self.max_k, c_size[2]))
-        for t in range(seq_length):
-            for k in range(self.max_k):
-                i = t+k*self.num_patches_in_row
-                if i < seq_length:
-                    # (N, encoder_dim) , (N, encoder_dim)
-                    f[:, t, k, :] = torch.sum(z[:, i, :] * self.Wk[k](c[:, t, :]), dim=1)  # scalar product over batch
-        return f  # (N, L, max_k, H_out) # f is without exp
-"""

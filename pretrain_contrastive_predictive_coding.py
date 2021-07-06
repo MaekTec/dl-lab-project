@@ -43,7 +43,7 @@ def parse_arguments():
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--weight-decay', type=float, default=0.0, help='weight decay')
-    parser.add_argument('--bs', type=int, default=256, help='batch_size')
+    parser.add_argument('--bs', type=int, default=64, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
@@ -125,6 +125,8 @@ def train(loader, model, optimizer, scheduler, epoch):
     total = 0
     model.train()
     for i, inputs in tqdm(enumerate(loader)):
+        if i % 200:
+            break
         inputs = inputs.cuda()
         #labels = labels.cuda()
         optimizer.zero_grad()
