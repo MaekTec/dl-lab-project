@@ -95,9 +95,9 @@ def main(args):
     train_data = CIFAR10Custom(data_root, train=True, transform=train_transform, download=True, unlabeled=True)
     val_data = CIFAR10Custom(data_root, val=True, transform=train_transform, download=True, unlabeled=True)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=4,
-                                               pin_memory=False, drop_last=True)
+                                               pin_memory=True, drop_last=True)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=4,
-                                             pin_memory=False, drop_last=False)
+                                             pin_memory=True, drop_last=False)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
@@ -117,6 +117,8 @@ def main(args):
         logger.info('Training accuracy: {}'.format(train_acc))
         logger.info('Validation loss: {}'.format(val_loss))
         logger.info('Validation accuracy: {}'.format(val_acc))
+        import gc
+        gc.collect()
 
         # save model
         if val_loss < best_val_loss:
