@@ -95,9 +95,9 @@ def main(args):
     train_data = CIFAR10Custom(data_root, train=True, transform=train_transform, download=True, unlabeled=True)
     val_data = CIFAR10Custom(data_root, val=True, transform=train_transform, download=True, unlabeled=True)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=4,
-                                               pin_memory=True, drop_last=True)
+                                               pin_memory=False, drop_last=True)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=4,
-                                             pin_memory=True, drop_last=False)
+                                             pin_memory=False, drop_last=False)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
@@ -149,12 +149,12 @@ def train(loader, model, optimizer, scheduler, epoch):
 
     mean_train_loss = total_loss / total
     mean_train_accuracy = total_accuracy / total
-    #scalar_dict = {}
-    #scalar_dict['Loss/train'] = mean_train_loss
-    #scalar_dict['Accuracy/train'] = mean_train_accuracy
-    #save_in_log(writer, epoch, scalar_dict=scalar_dict)
-    #return mean_train_loss, mean_train_accuracy
-    return  0, 0
+    scalar_dict = {}
+    scalar_dict['Loss/train'] = mean_train_loss
+    scalar_dict['Accuracy/train'] = mean_train_accuracy
+    save_in_log(writer, epoch, scalar_dict=scalar_dict)
+    return mean_train_loss, mean_train_accuracy
+
 
 # validation function.
 def validate(loader, model, epoch):
@@ -178,12 +178,12 @@ def validate(loader, model, epoch):
 
     mean_val_loss = total_loss / total
     mean_val_accuracy = total_accuracy / total
-    #scalar_dict = {}
-    #scalar_dict['Loss/val'] = mean_val_loss
-    #scalar_dict['Accuracy/val'] = mean_val_accuracy
-    #save_in_log(writer, epoch, scalar_dict=scalar_dict)
-    #return mean_val_loss, mean_val_accuracy
-    return 0, 0
+    scalar_dict = {}
+    scalar_dict['Loss/val'] = mean_val_loss
+    scalar_dict['Accuracy/val'] = mean_val_accuracy
+    save_in_log(writer, epoch, scalar_dict=scalar_dict)
+
+    return mean_val_loss, mean_val_accuracy
 
 
 if __name__ == '__main__':
