@@ -25,6 +25,7 @@ class PretrainTask(Enum):
     none = 'none'
     rotation = 'rotation'
     jigsaw_puzzle = 'jigsaw_puzzle'
+    cpc = 'cpc'
 
     def __str__(self):
         return self.value
@@ -121,6 +122,25 @@ def main(args):
         for i in range(7, 10):
             del pretrained_dict[f'fc{i}.weight']
             del pretrained_dict[f'fc{i}.bias']
+
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
+    elif args.pretrain_task is PretrainTask.cpc:
+        model_dict = model.state_dict()
+        pretrained_dict = torch.load(args.weight_init)
+
+        if args.resnet:
+            del pretrained_dict['encoder.net.fc.weight']
+            del pretrained_dict['encoder.net.fc.bias']
+        else:
+            del pretrained_dict['encoder.net.mlp_head.1.weight']
+            del pretrained_dict['encoder.net.mlp_head.1.bias']
+
+        for key in list(pretrained_dict.keys()):
+            if "encoder" not in key:
+                pretrained_dict.pop(key)
+            else:
+                pretrained_dict[key.replace("encoder.", "")] = pretrained_dict.pop(key)
 
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)

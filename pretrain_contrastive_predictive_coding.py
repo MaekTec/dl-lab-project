@@ -27,10 +27,10 @@ https://arxiv.org/pdf/1905.09272.pdf (this)
 - 
 
 TODO:
-- fix RAM
 - downstream
 - larger epoch
 - transforms
+- add args?
 
 Helpful implementations:
 https://github.com/SeonghoBaek/CPC/blob/master/cpc.py
