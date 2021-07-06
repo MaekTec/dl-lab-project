@@ -94,7 +94,7 @@ class ContrastivePredictiveCodingNetworkLinearClassification(nn.Module):
         super().__init__()
         self.encoder = encoder
         self.num_patches_per_dim = num_patches_per_dim
-        self.fc = nn.Linear(encoder_dim, num_classes)
+        self.fc = nn.Linear(encoder_dim*num_patches_per_dim*num_patches_per_dim, num_classes)
 
     def forward(self, x):
         # x has shape (N, L, 1, HI, WI), L=7*7 in default setting and HI=WI=64 (original CPC)
