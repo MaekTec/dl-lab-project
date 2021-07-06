@@ -3,6 +3,8 @@ import numpy as np
 import argparse
 import torch
 from pprint import pprint
+
+from models.contrastive_predictive_coding_network import ContrastivePredictiveCodingNetworkLinearClassification
 from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log, str2bool
 from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
@@ -12,7 +14,7 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from models.context_free_network import ContextFreeNetwork
 from data.transforms import get_transforms_downstream_training, \
-    get_transforms_downstream_validation
+    get_transforms_downstream_validation, get_transforms_pretraining_contrastive_predictive_coding
 from tqdm import tqdm
 from enum import Enum
 import torchsummary
@@ -89,6 +91,16 @@ def main(args):
         model = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=10).cuda()
         # torch.nn.init.zeros_(model.net.mlp_head[1].weight)
 
+    input_dims = (3, args.image_size, args.image_size)
+    # for fine-tune-last-layer option
+    if args.resnet:
+        last_layer = model.net.fc
+    else:
+        last_layer = model.net.mlp_head
+
+    transform = get_transforms_downstream_training(args)
+    transform_validation = get_transforms_downstream_validation(args)
+
     if args.pretrain_task is PretrainTask.none:
         pass
 
@@ -132,9 +144,11 @@ def main(args):
         if args.resnet:
             del pretrained_dict['encoder.net.fc.weight']
             del pretrained_dict['encoder.net.fc.bias']
+            #  TODO
         else:
-            del pretrained_dict['encoder.net.mlp_head.1.weight']
-            del pretrained_dict['encoder.net.mlp_head.1.bias']
+            encoder_dim = pretrained_dict["encoder.net.mlp_head.1.weight"].size()[1]
+            num_features = model.net.mlp_head[1].in_features
+            model.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=encoder_dim).cuda()
 
         for key in list(pretrained_dict.keys()):
             if "encoder" not in key:
@@ -144,26 +158,28 @@ def main(args):
 
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
+
+        encoder = model
+        model = ContrastivePredictiveCodingNetworkLinearClassification(encoder, encoder_dim, 7, 10)
+        last_layer = model.fc
+
+        input_dims = (7*7, 3, args.image_size, args.image_size)
+        transform = get_transforms_pretraining_contrastive_predictive_coding(args)
+        transform_validation = get_transforms_pretraining_contrastive_predictive_coding(args)
+
     else:
         raise ValueError
 
     if args.fine_tune_last_layer:
         disable_gradients(model)
-        if args.resnet:
-            last_layer = model.net.fc
-        else:
-            last_layer = model.net.mlp_head
 
         for x in last_layer.parameters():
             x.requires_grad = True
 
     logger.info(model)
-    torchsummary.summary(model, (3, args.image_size, args.image_size), args.bs)
+    torchsummary.summary(model, input_dims, args.bs)
 
     data_root = args.data_folder
-    transform = get_transforms_downstream_training(args)
-    transform_validation = get_transforms_downstream_validation(args)
-
     train_data = CIFAR10Custom(data_root, train=True, download=True, transform=transform, unlabeled=False)
     val_data = CIFAR10Custom(data_root, val=True, download=True, transform=transform_validation, unlabeled=False)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=2,

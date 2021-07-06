@@ -128,16 +128,24 @@ class DivideInGrid:
         self.overlap = overlap
 
     def __call__(self, x):
+        if isinstance(x, tuple):
+            images, labels = x
+        else:
+            images = x
         # x has shape (C x H x W)
-        assert x.size()[1] == x.size()[2]
-        image_size = x.size()[1]
+        assert images.size()[1] == images.size()[2]
+        image_size = images.size()[1]
         num_patches_per_dim = int(image_size / (self.patch_size - self.overlap)) - 1
         patches = []
         for i in range(num_patches_per_dim):
             for j in range(num_patches_per_dim):
-                patches.append(x[:, i * (self.patch_size - self.overlap):i * (self.patch_size - self.overlap) + self.patch_size,
+                patches.append(images[:, i * (self.patch_size - self.overlap):i * (self.patch_size - self.overlap) + self.patch_size,
                                j * (self.patch_size - self.overlap):j * (self.patch_size - self.overlap) + self.patch_size])
-        return patches  # (N, H, W)
+        # patches shape is (N, H, W)
+        if isinstance(x, tuple):
+            return patches, labels
+        else:
+            return patches
 
 
 class ApplyOnList:
@@ -221,6 +229,23 @@ def get_transforms_pretraining_contrastive_predictive_coding(args):
     ])
     return train_transform
 
+
+'''
+def get_transforms_downstream_contrastive_predictive_coding_validation(args):
+    """ Returns the transformations for the pretraining task. """
+    train_transform = Compose([
+        ToTensor(),
+        Resize(int(args.image_size*4*300/256)),
+        RandomCrop(args.image_size*4),
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()),
+        #Grayscale(num_output_channels=3),
+        DivideInGrid(args.image_size, int(args.image_size/2)),
+        ApplyOnList(RandomCrop(args.image_size-4)),
+        ApplyOnList(Resize(args.image_size)),
+        CollateList()
+    ])
+    return train_transform
+'''
 
 def get_transforms_downstream_training(args):
     """ Returns the transformations for the pretraining task. """
