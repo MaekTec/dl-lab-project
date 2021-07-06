@@ -26,6 +26,12 @@ https://arxiv.org/pdf/1905.09272.pdf (this)
 - data augmentation (shearing, rotation, elastic deformations and color transforms)
 - 
 
+TODO:
+- fix RAM
+- downstream
+- larger epoch
+- transforms
+
 Helpful implementations:
 https://github.com/SeonghoBaek/CPC/blob/master/cpc.py
 https://github.com/davidtellez/contrastive-predictive-coding-images

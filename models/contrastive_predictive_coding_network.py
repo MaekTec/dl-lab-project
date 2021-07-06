@@ -85,4 +85,4 @@ class ContrastivePredictiveCodingNetwork(nn.Module):
             total += 1
         loss = total_loss / total
         acc = total_accuracy / total
-        return loss, acc
+        return loss, acc.item()
