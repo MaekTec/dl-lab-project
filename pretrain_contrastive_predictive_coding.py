@@ -125,7 +125,7 @@ def train(loader, model, optimizer, scheduler, epoch):
     total = 0
     model.train()
     for i, inputs in tqdm(enumerate(loader)):
-        if (i+1) % 5 == 0:
+        if (i+1) % 200 == 0:
             break
         inputs = inputs.cuda()
         #labels = labels.cuda()
@@ -158,7 +158,7 @@ def validate(loader, model, epoch):
     model.eval()
     with torch.no_grad():
         for i, inputs in tqdm(enumerate(loader)):
-            if (i + 1) % 5 == 0:
+            if (i + 1) % 200 == 0:
                 break
             inputs = inputs.cuda()
             #labels = labels.cuda()

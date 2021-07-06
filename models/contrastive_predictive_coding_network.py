@@ -80,7 +80,6 @@ class ContrastivePredictiveCodingNetwork(nn.Module):
             # unsqueeze to have a batch of 1
             logits_batch = torch.unsqueeze(logits.T, dim=0)  # (1, (N*HL*WL, N*HLC*WLC))
             labels_batch = torch.unsqueeze(labels, dim=0)  # (1, N*HLC*WLC)
-            print(logits_batch.size())
             total_loss += self.cross_entropy(logits_batch, labels_batch)
             total_accuracy += accuracy(logits, labels)[0].item()
             total += 1
