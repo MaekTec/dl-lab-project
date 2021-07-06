@@ -141,7 +141,7 @@ def train(loader, model, optimizer, scheduler, epoch):
         optimizer.step()
 
         batch_size = inputs.size(0)
-        total_loss += loss.detach().item() * batch_size
+        total_loss += loss.item() * batch_size
         total_accuracy += acc * batch_size
         #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
@@ -149,12 +149,12 @@ def train(loader, model, optimizer, scheduler, epoch):
 
     mean_train_loss = total_loss / total
     mean_train_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/train'] = mean_train_loss
-    scalar_dict['Accuracy/train'] = mean_train_accuracy
-    save_in_log(writer, epoch, scalar_dict=scalar_dict)
-    return mean_train_loss, mean_train_accuracy
-
+    #scalar_dict = {}
+    #scalar_dict['Loss/train'] = mean_train_loss
+    #scalar_dict['Accuracy/train'] = mean_train_accuracy
+    #save_in_log(writer, epoch, scalar_dict=scalar_dict)
+    #return mean_train_loss, mean_train_accuracy
+    return  0, 0
 
 # validation function.
 def validate(loader, model, epoch):
@@ -171,19 +171,19 @@ def validate(loader, model, epoch):
             loss, acc = model(inputs)
 
             batch_size = inputs.size(0)
-            total_loss += loss.detach().item() * batch_size
+            total_loss += loss.item() * batch_size
             total_accuracy += acc * batch_size
             #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
             total += batch_size
 
     mean_val_loss = total_loss / total
     mean_val_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/val'] = mean_val_loss
-    scalar_dict['Accuracy/val'] = mean_val_accuracy
-    save_in_log(writer, epoch, scalar_dict=scalar_dict)
-
-    return mean_val_loss, mean_val_accuracy
+    #scalar_dict = {}
+    #scalar_dict['Loss/val'] = mean_val_loss
+    #scalar_dict['Accuracy/val'] = mean_val_accuracy
+    #save_in_log(writer, epoch, scalar_dict=scalar_dict)
+    #return mean_val_loss, mean_val_accuracy
+    return 0, 0
 
 
 if __name__ == '__main__':
