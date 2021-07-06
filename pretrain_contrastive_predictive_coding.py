@@ -104,13 +104,13 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, optimizer, scheduler, epoch)
-        val_loss, val_acc = validate(val_loader, model, epoch)
+        train_loss = train(train_loader, model, optimizer, scheduler, epoch)
+        val_loss = validate(val_loader, model, epoch)
 
         logger.info('Training loss: {}'.format(train_loss))
-        logger.info('Training accuracy: {}'.format(train_acc))
+        #logger.info('Training accuracy: {}'.format(train_acc))
         logger.info('Validation loss: {}'.format(val_loss))
-        logger.info('Validation accuracy: {}'.format(val_acc))
+        #logger.info('Validation accuracy: {}'.format(val_acc))
 
         # save model
         if val_loss < best_val_loss:
