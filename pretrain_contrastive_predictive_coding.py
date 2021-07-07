@@ -30,8 +30,8 @@ and not all data augmentation are public available.
 
 TODO:
 - larger epoch
+- downstream validation transforms
 - steps k?
-- add args?
 - mean pool?
 
 Helpful implementations:
@@ -62,7 +62,7 @@ def parse_arguments():
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
 
-    hparam_keys = ["lr", "weight_decay", "bs", "epochs", "image_size", "resnet"]
+    hparam_keys = ["lr", "weight_decay", "bs", "epochs", "image_size", "num_patches_per_dim", "resnet"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)

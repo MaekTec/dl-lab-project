@@ -14,7 +14,8 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from models.context_free_network import ContextFreeNetwork
 from data.transforms import get_transforms_downstream_training, \
-    get_transforms_downstream_validation, get_transforms_pretraining_contrastive_predictive_coding
+    get_transforms_downstream_validation, get_transforms_pretraining_contrastive_predictive_coding, \
+    get_transforms_downstream_contrastive_predictive_coding_validation
 from tqdm import tqdm
 from enum import Enum
 import torchsummary
@@ -167,7 +168,7 @@ def main(args):
         input_dims = (num_patches_per_dim**2, 3, args.image_size, args.image_size)
         args.num_patches_per_dim = num_patches_per_dim
         transform = get_transforms_pretraining_contrastive_predictive_coding(args)
-        transform_validation = get_transforms_pretraining_contrastive_predictive_coding(args)
+        transform_validation = get_transforms_downstream_contrastive_predictive_coding_validation(args)
 
     else:
         raise ValueError

@@ -195,7 +195,6 @@ class CollateList:
 
 
 def get_transforms_pretraining_rotation(args):
-    """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
         RandomCrop(32, padding=4),
         RandomHorizontalFlip(),
@@ -208,7 +207,6 @@ def get_transforms_pretraining_rotation(args):
 
 
 def get_transforms_pretraining_jigsaw_puzzle(args):
-    """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
         ToTensor(),
         Resize(args.image_size*4),
@@ -225,11 +223,9 @@ def get_transforms_pretraining_jigsaw_puzzle(args):
 
 
 def get_transforms_pretraining_contrastive_predictive_coding(args):
-    """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
         ToTensor(),
         Resize(int(args.image_size + ((args.num_patches_per_dim-1) * int(args.image_size/2)))),  # 160 for 4x4 grid
-        #RandomCrop(args.image_size*4),
         DivideInGrid(args.image_size, int(args.image_size/2)),  # 4x4 grid
         ApplyOnList(ToPILImage()),
         ApplyOnList(AutoAugment(AutoAugmentPolicy.CIFAR10)),
@@ -245,25 +241,18 @@ def get_transforms_pretraining_contrastive_predictive_coding(args):
     return train_transform
 
 
-'''
 def get_transforms_downstream_contrastive_predictive_coding_validation(args):
-    """ Returns the transformations for the pretraining task. """
-    train_transform = Compose([
+    val_transform = Compose([
         ToTensor(),
-        Resize(int(args.image_size*4*300/256)),
-        RandomCrop(args.image_size*4),
-        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()),
-        #Grayscale(num_output_channels=3),
-        DivideInGrid(args.image_size, int(args.image_size/2)),
-        ApplyOnList(RandomCrop(args.image_size-4)),
-        ApplyOnList(Resize(args.image_size)),
+        Resize(int(args.image_size + ((args.num_patches_per_dim - 1) * int(args.image_size / 2)))),  # 160 for 4x4 grid
+        DivideInGrid(args.image_size, int(args.image_size / 2)),  # 4x4 grid
+        ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
         CollateList()
     ])
-    return train_transform
-'''
+    return val_transform
+
 
 def get_transforms_downstream_training(args):
-    """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
         #transforms.RandomAffine(degrees=20, shear=10),
         # random crop and aspect ratio
@@ -279,11 +268,10 @@ def get_transforms_downstream_training(args):
 
 
 def get_transforms_downstream_validation(args):
-    """ Returns the transformations for the pretraining task. """
-    train_transform = Compose([
+    val_transform = Compose([
         ToTensor(),
         Resize(args.image_size),
         Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
     ])
-    return train_transform
+    return val_transform
 

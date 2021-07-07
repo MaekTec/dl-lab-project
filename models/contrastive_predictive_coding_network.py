@@ -94,7 +94,10 @@ class ContrastivePredictiveCodingNetworkLinearClassification(nn.Module):
         super().__init__()
         self.encoder = encoder
         self.num_patches_per_dim = num_patches_per_dim
-        self.fc = nn.Linear(encoder_dim*num_patches_per_dim*num_patches_per_dim, num_classes)
+        self.bn = nn.BatchNorm2d(num_patches_per_dim**2)
+        self.conv = nn.Conv2d(encoder_dim, out_channels=num_classes, kernel_size=(1, 1))
+        self.mean_pool = nn.AvgPool2d(num_patches_per_dim)
+        #self.fc = nn.Linear(encoder_dim*num_patches_per_dim*num_patches_per_dim, num_classes)
 
     def forward(self, x):
         # x has shape (N, L, 1, HI, WI), L=7*7 in default setting and HI=WI=64 (original CPC)
@@ -102,6 +105,9 @@ class ContrastivePredictiveCodingNetworkLinearClassification(nn.Module):
         latents = torch.stack([self.encoder(x[:, i, ...]) for i in range(seq_length)], dim=1)  # (N, L, DE)
         latents = torch.reshape(latents, (x.size()[0], self.num_patches_per_dim, self.num_patches_per_dim, latents.size()[2]))  # (N, HL, WL, DE)
         latents = latents.permute(0, 3, 1, 2)  # (N, DE, HL, WL)
-        x = torch.flatten(latents, 1)
-        x = self.fc(x)
+        x = self.conv(latents)  # (N, num_classes, HL, WL)
+        x = self.mean_pool(x)  # (N, num_classes, 1, 1)
+        x = torch.flatten(x, 1)  # (N, num_classes)
+        #x = torch.flatten(latents, 1)
+        #x = self.fc(x)
         return x
