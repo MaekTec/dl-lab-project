@@ -29,9 +29,6 @@ This implementation is slightly different from above, due to the smaller image s
 and not all data augmentation are public available.
 
 TODO:
-- larger epoch
-- downstream validation transforms
-- steps k?
 - mean pool?
 
 Helpful implementations:
@@ -51,7 +48,7 @@ def parse_arguments():
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--weight-decay', type=float, default=0.0, help='weight decay')
-    parser.add_argument('--bs', type=int, default=64, help='batch_size')
+    parser.add_argument('--bs', type=int, default=128, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
     parser.add_argument('--num-patches-per-dim', type=int, default=4, help='in how many patches to split the image')
@@ -74,6 +71,7 @@ def parse_arguments():
     args.splits = args.num_patches_per_dim**2
 
     return args
+
 
 def main(args):
     # Logging to the file and stdout
@@ -134,10 +132,9 @@ def train(loader, model, optimizer, scheduler, epoch):
     total = 0
     model.train()
     for i, inputs in tqdm(enumerate(loader)):
-        if (i+1) % 200 == 0:
-            break
+        #if (i+1) % 200 == 0:
+        #    break
         inputs = inputs.cuda()
-        #labels = labels.cuda()
         optimizer.zero_grad()
         loss, acc = model(inputs)
         loss.backward()
@@ -146,7 +143,6 @@ def train(loader, model, optimizer, scheduler, epoch):
         batch_size = inputs.size(0)
         total_loss += loss.item() * batch_size
         total_accuracy += acc * batch_size
-        #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
     scheduler.step()
 
@@ -167,16 +163,14 @@ def validate(loader, model, epoch):
     model.eval()
     with torch.no_grad():
         for i, inputs in tqdm(enumerate(loader)):
-            if (i + 1) % 200 == 0:
-                break
+            #if (i + 1) % 200 == 0:
+            #    break
             inputs = inputs.cuda()
-            #labels = labels.cuda()
             loss, acc = model(inputs)
 
             batch_size = inputs.size(0)
             total_loss += loss.item() * batch_size
             total_accuracy += acc * batch_size
-            #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
             total += batch_size
 
     mean_val_loss = total_loss / total
