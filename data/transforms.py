@@ -1,4 +1,6 @@
 import random
+
+import elasticdeform
 import torch
 import numpy as np
 import torchvision.transforms.functional as TF
@@ -148,6 +150,15 @@ class DivideInGrid:
             return patches
 
 
+class ElasticDeformation:
+
+    def __init__(self):
+        pass
+
+    def __call__(self, x):
+        return elasticdeform.deform_random_grid(x, sigma=25, points=3)
+
+
 class ApplyOnList:
     """ Apply a transformation to a list of images (e.g. after applying ImgRotation)"""
 
@@ -217,14 +228,18 @@ def get_transforms_pretraining_contrastive_predictive_coding(args):
     """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
         ToTensor(),
-        Resize(int(args.image_size*4*300/256)),
-        RandomCrop(args.image_size*4),
-        RandomHorizontalFlip(),
-        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()),
-        Grayscale(num_output_channels=3),
-        DivideInGrid(args.image_size, int(args.image_size/2)),
-        ApplyOnList(RandomCrop(args.image_size-4)),
-        ApplyOnList(Resize(args.image_size)),
+        Resize(int(args.image_size*160/64)),  # 160
+        #RandomCrop(args.image_size*4),
+        DivideInGrid(args.image_size, int(args.image_size/2)),  # 4x4 grid
+        ApplyOnList(ToPILImage()),
+        ApplyOnList(AutoAugment(AutoAugmentPolicy.CIFAR10)),
+        ApplyOnList(AutoAugment(AutoAugmentPolicy.CIFAR10)),
+        ApplyOnList(ToTensor()),
+        # ColorJitter instead of original transformations which are not public available
+        ApplyOnList(RandomApply([ColorJitter(brightness=.2, contrast=0.2, saturation=0.2, hue=.2)], p=0.8)),
+        ApplyOnList(RandomApply([RandomAffine(0, shear=5)], p=0.2)),
+        ApplyOnList(RandomApply([Grayscale(num_output_channels=3)], p=0.25)),
+        ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
         CollateList()
     ])
     return train_transform

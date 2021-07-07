@@ -28,7 +28,6 @@ https://arxiv.org/pdf/1905.09272.pdf (this)
 
 TODO:
 - larger epoch
-- transforms
 - add args?
 
 Helpful implementations:
@@ -82,8 +81,8 @@ def main(args):
     else:
         encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=encoder_out_dim).cuda()
 
-    num_patches_in_row = 7
-    model = ContrastivePredictiveCodingNetwork(encoder, encoder_out_dim, num_patches_in_row, 7).cuda()
+    num_patches_in_row = 4  # 6 in paper, but due to smaller images we use 4
+    model = ContrastivePredictiveCodingNetwork(encoder, encoder_out_dim, num_patches_in_row).cuda()
 
     logger.info(model)
     #torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
