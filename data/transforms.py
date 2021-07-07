@@ -1,4 +1,6 @@
 import random
+
+import elasticdeform
 import torch
 import numpy as np
 import torchvision.transforms.functional as TF
@@ -67,10 +69,16 @@ class ShuffleTiles:
 
     @staticmethod
     def hamming(p_0, p_1):
+        p_0 = np.expand_dims(p_0, axis=1)
+        p_1 = np.expand_dims(p_1, axis=0)
+        D = np.sum(p_0 != p_1, axis=2)
+        """
+        # Same, but slower:
         D = np.zeros((len(p_0), len(p_1)))
         for i in range(len(p_0)):
             for j in range(len(p_1)):
                 D[i, j] = np.sum(p_0[i] != p_1[j])
+        """
         return D
 
     def generate_permutation_set(self):
@@ -111,8 +119,44 @@ class ColorChannelJitter:
             jitter = tuple(np.random.randint(-self.max_jitter + 1, self.max_jitter + 1, 2))
             x[c, ...] = torch.roll(x[c, ...], jitter, (0, 1))
 
-        x = x[:, self.max_jitter:-self.max_jitter, self.max_jitter:-self.max_jitter]
+        x = x[:, self.max_jitter:-self.max_jitter, self.max_jitter:-self.max_jitter]  # crop
         return x
+
+
+class DivideInGrid:
+
+    def __init__(self, patch_size, overlap):  # both in pixel
+        self.patch_size = patch_size
+        self.overlap = overlap
+
+    def __call__(self, x):
+        if isinstance(x, tuple):
+            images, labels = x
+        else:
+            images = x
+        # x has shape (C x H x W)
+        assert images.size()[1] == images.size()[2]
+        image_size = images.size()[1]
+        num_patches_per_dim = int(image_size / (self.patch_size - self.overlap)) - 1
+        patches = []
+        for i in range(num_patches_per_dim):
+            for j in range(num_patches_per_dim):
+                patches.append(images[:, i * (self.patch_size - self.overlap):i * (self.patch_size - self.overlap) + self.patch_size,
+                               j * (self.patch_size - self.overlap):j * (self.patch_size - self.overlap) + self.patch_size])
+        # patches shape is (N, H, W)
+        if isinstance(x, tuple):
+            return patches, labels
+        else:
+            return patches
+
+
+class ElasticDeformation:
+
+    def __init__(self):
+        pass
+
+    def __call__(self, x):
+        return elasticdeform.deform_random_grid(x, sigma=25, points=3)
 
 
 class ApplyOnList:
@@ -122,9 +166,13 @@ class ApplyOnList:
         self.transform = transform
 
     def __call__(self, x):
-        images, labels = x
-        images = [self.transform(i) for i in images]
-        return images, labels
+        if isinstance(x, tuple):
+            images, labels = x
+            images = [self.transform(i) for i in images]
+            return images, labels
+        else:
+            x = [self.transform(i) for i in x]
+            return x
 
 
 class ToTensorAfterRotations:
@@ -137,33 +185,36 @@ class ToTensorAfterRotations:
 
 class CollateList:
     def __call__(self, x):
-        images, labels = x
-        x = torch.stack(images, dim=0)
-        return x, labels
+        if isinstance(x, tuple):
+            images, labels = x
+            x = torch.stack(images, dim=0)
+            return x, labels
+        else:
+            x = torch.stack(x, dim=0)
+            return x
 
 
 def get_transforms_pretraining_rotation(args):
-    """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
         RandomCrop(32, padding=4),
         RandomHorizontalFlip(),
         ImgRotation(),
         ToTensorAfterRotations(),
-        ApplyOnList(Resize(128)),
+        ApplyOnList(Resize(args.image_size)),
         ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()))
     ])
     return train_transform
 
 
-def get_transforms_pretraining_jigsaw_puzzle():
-    """ Returns the transformations for the pretraining task. """
+def get_transforms_pretraining_jigsaw_puzzle(args):
     train_transform = Compose([
         ToTensor(),
-        Resize(74),
-        DivideInTiles(2),
-        ShuffleTiles(2, 24),
-        ApplyOnList(RandomCrop(34)),
-        ApplyOnList(ColorChannelJitter(1)),
+        Resize(args.image_size*4),
+        #ApplyOnList(ColorChannelJitter(2)),  # Has no purpose for the ViT, because image patch is flattened.
+        RandomCrop(int(225/256*args.image_size*4)),
+        DivideInTiles(args.num_tiles_per_dim),
+        ShuffleTiles(args.num_tiles_per_dim, args.number_of_permutations),
+        ApplyOnList(RandomCrop(args.image_size)),
         ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
         ApplyOnList(RandomGrayscale(p=0.3)),
         CollateList()
@@ -171,13 +222,56 @@ def get_transforms_pretraining_jigsaw_puzzle():
     return train_transform
 
 
-def get_transforms_downstream_rotation(args):
-    """ Returns the transformations for the pretraining task. """
+def get_transforms_pretraining_contrastive_predictive_coding(args):
     train_transform = Compose([
-        #RandomCrop(32, padding=4),
-        RandomHorizontalFlip(),
         ToTensor(),
-        #Resize(128),
+        Resize(int(args.image_size + ((args.num_patches_per_dim-1) * int(args.image_size/2)))),  # 160 for 4x4 grid
+        DivideInGrid(args.image_size, int(args.image_size/2)),  # 4x4 grid
+        ApplyOnList(ToPILImage()),
+        ApplyOnList(AutoAugment(AutoAugmentPolicy.CIFAR10)),
+        ApplyOnList(AutoAugment(AutoAugmentPolicy.CIFAR10)),
+        ApplyOnList(ToTensor()),
+        # ColorJitter instead of original transformations which are not public available
+        ApplyOnList(RandomApply([ColorJitter(brightness=.2, contrast=0.2, saturation=0.2, hue=.2)], p=0.8)),
+        ApplyOnList(RandomApply([RandomAffine(0, shear=5)], p=0.2)),
+        ApplyOnList(RandomApply([Grayscale(num_output_channels=3)], p=0.25)),
+        ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
+        CollateList()
+    ])
+    return train_transform
+
+
+def get_transforms_downstream_contrastive_predictive_coding_validation(args):
+    val_transform = Compose([
+        ToTensor(),
+        Resize(int(args.image_size + ((args.num_patches_per_dim - 1) * int(args.image_size / 2)))),  # 160 for 4x4 grid
+        DivideInGrid(args.image_size, int(args.image_size / 2)),  # 4x4 grid
+        ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
+        CollateList()
+    ])
+    return val_transform
+
+
+def get_transforms_downstream_training(args):
+    train_transform = Compose([
+        #transforms.RandomAffine(degrees=20, shear=10),
+        # random crop and aspect ratio
+        #transforms.RandomResizedCrop((args.image_size, args.image_size), scale=(0.9, 1.0), ratio=(3. / 4., 4. / 3.)),
+        #transforms.ColorJitter(brightness=0.1, contrast=0.1),
+        #transforms.GaussianBlur(5, (0.1, 2.0)),
+        transforms.RandomHorizontalFlip(),
+        ToTensor(),
+        Resize(args.image_size),
         Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
     ])
     return train_transform
+
+
+def get_transforms_downstream_validation(args):
+    val_transform = Compose([
+        ToTensor(),
+        Resize(args.image_size),
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
+    ])
+    return val_transform
+
