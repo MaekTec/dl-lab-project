@@ -16,25 +16,29 @@ from models.context_free_network import ContextFreeNetwork
 from tqdm import tqdm
 
 """
-https://arxiv.org/pdf/1905.09272.pdf (this)
+https://arxiv.org/pdf/1905.09272.pdf (cpc v2)
+in paper they use the following schema:
 - predict from top to down and vise-versa
-- 80x80 pixel patches with 36 pixel stride?
+- 80x80 pixel patches with 36 pixel stride
 - resize the image to 300×300 pixels and randomly ex-tract a 260×260 pixel crop,
   then divide this image into a 6×6 grid of 80×80 patches
 - predict from left to right and vise-versa
-- randomly drop 2 of 3 color channels
-- data augmentation (shearing, rotation, elastic deformations and color transforms)
-- 
+- data augmentations (randomly drop 2 of 3 color channels, shearing, rotation, elastic deformations, color transforms, ...)
+
+This implementation is slightly different from above, due to the smaller image size 
+and not all data augmentation are public available.
 
 TODO:
 - larger epoch
+- steps k?
 - add args?
+- mean pool?
 
 Helpful implementations:
 https://github.com/SeonghoBaek/CPC/blob/master/cpc.py
 https://github.com/davidtellez/contrastive-predictive-coding-images
 
-https://arxiv.org/pdf/1807.03748.pdf (original)
+https://arxiv.org/pdf/1807.03748.pdf (original cpc)
 """
 
 set_random_seed(0)
@@ -50,6 +54,7 @@ def parse_arguments():
     parser.add_argument('--bs', type=int, default=64, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
+    parser.add_argument('--num-patches-per-dim', type=int, default=4, help='in how many patches to split the image')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
                         const=True, default=False,
                         help="Use ResNet instead of Vit")
@@ -66,7 +71,7 @@ def parse_arguments():
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
-    #args.splits = args.num_tiles_per_dim**2
+    args.splits = args.num_patches_per_dim**2
 
     return args
 
@@ -81,8 +86,7 @@ def main(args):
     else:
         encoder = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=encoder_out_dim).cuda()
 
-    num_patches_in_row = 4  # 6 in paper, but due to smaller images we use 4
-    model = ContrastivePredictiveCodingNetwork(encoder, encoder_out_dim, num_patches_in_row).cuda()
+    model = ContrastivePredictiveCodingNetwork(encoder, encoder_out_dim, args.num_patches_per_dim).cuda()
 
     logger.info(model)
     #torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)

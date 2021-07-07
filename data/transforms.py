@@ -228,7 +228,7 @@ def get_transforms_pretraining_contrastive_predictive_coding(args):
     """ Returns the transformations for the pretraining task. """
     train_transform = Compose([
         ToTensor(),
-        Resize(int(args.image_size*160/64)),  # 160
+        Resize(int(args.image_size + ((args.num_patches_per_dim-1) * int(args.image_size/2)))),  # 160 for 4x4 grid
         #RandomCrop(args.image_size*4),
         DivideInGrid(args.image_size, int(args.image_size/2)),  # 4x4 grid
         ApplyOnList(ToPILImage()),

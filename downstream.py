@@ -159,11 +159,13 @@ def main(args):
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
 
+        num_patches_per_dim = 4
         encoder = model
-        model = ContrastivePredictiveCodingNetworkLinearClassification(encoder, encoder_dim, 7, 10).cuda()
+        model = ContrastivePredictiveCodingNetworkLinearClassification(encoder, encoder_dim, num_patches_per_dim, 10).cuda()
         last_layer = model.fc
 
-        input_dims = (7*7, 3, args.image_size, args.image_size)
+        input_dims = (num_patches_per_dim**2, 3, args.image_size, args.image_size)
+        args.num_patches_per_dim = num_patches_per_dim
         transform = get_transforms_pretraining_contrastive_predictive_coding(args)
         transform_validation = get_transforms_pretraining_contrastive_predictive_coding(args)
 
