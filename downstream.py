@@ -163,7 +163,7 @@ def main(args):
         num_patches_per_dim = 4
         encoder = model
         model = ContrastivePredictiveCodingNetworkLinearClassification(encoder, encoder_dim, num_patches_per_dim, 10).cuda()
-        last_layer = model.last_layers
+        last_layer = model.fc
 
         input_dims = (num_patches_per_dim**2, 3, args.image_size, args.image_size)
         args.num_patches_per_dim = num_patches_per_dim

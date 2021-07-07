@@ -29,8 +29,6 @@ This implementation is slightly different from above, due to the smaller image s
 and not all data augmentation are public available.
 
 TODO:
-- larger epoch
-- downstream validation transforms
 - steps k?
 - mean pool?
 
