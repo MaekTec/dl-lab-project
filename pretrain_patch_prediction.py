@@ -2,26 +2,15 @@ import os
 import numpy as np
 import argparse
 import torch
-import torch.nn as nn
 from pprint import pprint
-from data.transforms import get_transforms_pretraining_jigsaw_puzzle
-from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log
-from models.pretraining_backbone import ViTBackbone
+from data.transforms import get_transforms_pretraining_rotation, custom_collate, get_transforms_pretraining_mpp
+from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log, str2bool
+from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
-from models.context_free_network import ContextFreeNetwork
 
-"""
-https://arxiv.org/pdf/1603.09246.pdf
-fixed random permutation set
-to avoid learning of shortcuts:
-- more than one permutation per image
-- shuffle tiles as much as possible with Hamming distance
-- random gap between tiles
-- resize to 256 and random crop 225x225, split in 9 tiles each 75x75 and extract 64x64 from each with random shift
-- grayscale images
-"""
+# https://arxiv.org/pdf/1803.07728.pdf
 
 set_random_seed(0)
 global_step = 0
@@ -32,18 +21,22 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('--output-root', type=str, default='results')
-    parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
+    parser.add_argument('--epochs', type=int, default=15, help='epochs')
+    parser.add_argument("--resnet", type=str2bool, nargs='?',
+                        const=True, default=False,
+                        help="Use ResNet instead of Vit")
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
 
-    hparam_keys = ["lr", "bs"]
+    hparam_keys = ["lr", "bs", "epochs", "resnet"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
 
-    args.output_folder = check_dir(os.path.join(args.output_root, 'pretrain_jigsaw_puzzle', args.exp_name))
+    args.output_folder = check_dir(os.path.join(args.output_root, 'pretrain_rotation', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
@@ -54,49 +47,19 @@ def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
 
-    # build model
-    encoder = ViTBackbone().cuda()
-    num_features = encoder.net.mlp_head[1].in_features
-    encoder.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=512).cuda()
-    model = ContextFreeNetwork(encoder, 512*4, 24).cuda()  # out_features of ViT * number of tiles
+    model = ViTBackbone(image_size=256, patch_size=32,num_classes=1000)
 
-    print(model)
 
     # load dataset
     data_root = args.data_folder
-    train_transform = get_transforms_pretraining_jigsaw_puzzle()
+    train_transform = get_transforms_pretraining_mpp(args)
     train_data = CIFAR10Custom(data_root, train=True, transform=train_transform, download=True, unlabeled=True)
     val_data = CIFAR10Custom(data_root, val=True, transform=train_transform, download=True, unlabeled=True)
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=4,
-                                               pin_memory=True, drop_last=True)
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=4,
-                                             pin_memory=True, drop_last=False)
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=2,pin_memory=True, drop_last=True)
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=True, num_workers=2,pin_memory=True, drop_last=True)
 
-    # TODO: loss function
-    criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
-
-    expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
-    logger.info(expdata)
-    logger.info('train_data {}'.format(train_data.__len__()))
-    logger.info('val_data {}'.format(val_data.__len__()))
-
-    best_val_loss = np.inf
-    # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
-    for epoch in range(100):
-        logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, epoch)
-        val_loss, val_acc = validate(val_loader, model, criterion, epoch)
-
-        logger.info('Training loss: {}'.format(train_loss))
-        logger.info('Training accuracy: {}'.format(train_acc))
-        logger.info('Validation loss: {}'.format(val_loss))
-        logger.info('Validation accuracy: {}'.format(val_acc))
-
-        # save model
-        if val_loss < best_val_loss:
-            torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
-            best_val_loss = val_loss
+    #criterion = mpp_loss()
+    #optimizer =
 
 
 # train one epoch over the whole training dataset.
