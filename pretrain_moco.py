@@ -149,7 +149,7 @@ def validate(loader, model, criterion, epoch):
     model.eval()
     with torch.no_grad():
         for i, inputs in tqdm(enumerate(loader)):
-            inputs = inputs.cuda()
+            inputs = [i.cuda() for i in inputs]
             outputs, labels = model(inputs)
 
             batch_size = labels.size(0)
