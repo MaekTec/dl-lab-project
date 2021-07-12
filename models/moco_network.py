@@ -12,7 +12,8 @@ class MoCoNetwork(nn.Module):
         super().__init__()
         self.f_q = encoder
         self.f_k = copy.deepcopy(encoder)
-        self.queue = []
+        self.queue_train = []
+        self.queue_val = []
         self.encoder_dim = encoder_dim
         self.queue_size = queue_size
         self.momentum = momentum
@@ -32,9 +33,14 @@ class MoCoNetwork(nn.Module):
         # positive logits: Nx1
         l_pos = torch.matmul(torch.unsqueeze(q, dim=1), torch.unsqueeze(k, 2)).view(N, 1)  # (N,1,C) @ (N,C,1)
 
-        if self.queue:  # queue not empty?
+        if self.training:
+            queue = self.queue_train
+        else:
+            queue = self.queue_val
+
+        if queue:  # queue not empty?
             # negative logits: NxK
-            l_neg = torch.mm(q, torch.cat(self.queue, dim=0).T)  # (N, C) @ (C, K)
+            l_neg = torch.mm(q, torch.cat(queue, dim=0).T)  # (N, C) @ (C, K)
 
             # logits: Nx(1+K)
             logits = torch.cat([l_pos, l_neg], dim=1)
@@ -45,9 +51,9 @@ class MoCoNetwork(nn.Module):
         labels = torch.zeros(N).long().cuda()  # positives are the 0-th
 
         # update dictionary
-        self.queue.append(k)
-        if len(self.queue) >= self.queue_size:
-            self.queue.pop(0)
+        queue.append(k)
+        if len(queue) >= self.queue_size:
+            queue.pop(0)
 
         return logits/self.softmax_temp, labels
 
