@@ -9,6 +9,7 @@ from data.CIFAR10Custom import CIFAR10Custom
 from torch.utils.data._utils.collate import default_collate
 import itertools
 import math
+from PIL import ImageFilter
 
 
 def custom_collate(batch):
@@ -159,6 +160,34 @@ class ElasticDeformation:
         return elasticdeform.deform_random_grid(x, sigma=25, points=3)
 
 
+class GaussianBlur(object):
+    """Gaussian blur augmentation in SimCLR https://arxiv.org/abs/2002.05709"""
+
+    def __init__(self, sigma=[.1, 2.]):
+        self.sigma = sigma
+
+    def __call__(self, x):
+        sigma = random.uniform(self.sigma[0], self.sigma[1])
+        x = x.filter(ImageFilter.GaussianBlur(radius=sigma))
+        return x
+
+
+class TwoCropsTransform:
+    """
+    Take two random crops of one image as the query and key.
+    From original impl:
+    https://github.com/facebookresearch/moco/blob/78b69cafae80bc74cd1a89ac3fb365dc20d157d3/moco/loader.py#L6
+    """
+
+    def __init__(self, base_transform):
+        self.base_transform = base_transform
+
+    def __call__(self, x):
+        q = self.base_transform(x)
+        k = self.base_transform(x)
+        return [q, k]
+
+
 class ApplyOnList:
     """ Apply a transformation to a list of images (e.g. after applying ImgRotation)"""
 
@@ -238,6 +267,23 @@ def get_transforms_pretraining_contrastive_predictive_coding(args):
         ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
         CollateList()
     ])
+    return train_transform
+
+
+def get_transforms_pretraining_moco(args):
+    # Copied from the original impl: https://github.com/facebookresearch/moco/blob/master/main_moco.py
+    transform_each_crop = Compose([
+        transforms.RandomResizedCrop(args.image_size, scale=(0.2, 1.)),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
+        ], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.RandomApply([GaussianBlur([.1, 2.])], p=0.5),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()),
+    ])
+    train_transform = TwoCropsTransform(transform_each_crop)
     return train_transform
 
 
