@@ -29,6 +29,7 @@ class PretrainTask(Enum):
     rotation = 'rotation'
     jigsaw_puzzle = 'jigsaw_puzzle'
     cpc = 'cpc'
+    moco = 'moco'
 
     def __str__(self):
         return self.value
@@ -169,7 +170,25 @@ def main(args):
         args.num_patches_per_dim = num_patches_per_dim
         transform = get_transforms_pretraining_contrastive_predictive_coding(args)
         transform_validation = get_transforms_downstream_contrastive_predictive_coding_validation(args)
+    elif args.pretrain_task is PretrainTask.moco:
+        model_dict = model.state_dict()
+        pretrained_dict = torch.load(args.weight_init)
 
+        if args.resnet:
+            del pretrained_dict['f_q.net.fc.weight']
+            del pretrained_dict['f_q.net.fc.bias']
+        else:
+            del pretrained_dict['f_q.net.mlp_head.1.weight']
+            del pretrained_dict['f_q.net.mlp_head.1.bias']
+
+        for key in list(pretrained_dict.keys()):
+            if "f_q" not in key:
+                pretrained_dict.pop(key)
+            else:
+                pretrained_dict[key.replace("f_q.", "")] = pretrained_dict.pop(key)
+
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
     else:
         raise ValueError
 
