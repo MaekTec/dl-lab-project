@@ -7,8 +7,11 @@ import torch.nn.functional as F
 
 
 class MoCoNetwork(nn.Module):
+    """
+    Attention: queue_size depends on dataset size
+    """
 
-    def __init__(self, encoder, encoder_dim, queue_size=int(65536/256), momentum=0.999, softmax_temp=0.07):
+    def __init__(self, encoder, encoder_dim, queue_size=150, momentum=0.999, softmax_temp=0.07):
         super().__init__()
         self.f_q = encoder
         self.f_k = copy.deepcopy(encoder)
