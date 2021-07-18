@@ -162,7 +162,7 @@ def main(args):
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
 
-        last_layer = nn.ModuleList([model.fc8, model.fc9])
+        last_layer = model.fc9  # use last two layers, because last layer is very small
 
         # args from pretraining
         args.number_of_permutations = 64

@@ -9,8 +9,8 @@ class ContextFreeNetwork(nn.Module):
         super().__init__()
         self.encoder = encoder
         self.fc7 = nn.Linear(input_dim, 4096)
-        self.fc8 = nn.Linear(4096, 100)
-        self.fc9 = nn.Linear(100, num_classes)
+        self.fc8 = nn.Linear(4096, 4096)
+        self.fc9 = nn.Linear(4096, num_classes)
 
     def forward(self, x):
         # x has shape (N, 9, 1, H, W)
