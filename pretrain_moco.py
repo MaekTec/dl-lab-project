@@ -121,6 +121,8 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
     total = 0
     model.train()
     for i, inputs in tqdm(enumerate(loader)):
+        if ((i+1) % 30) == 0:
+            break
         inputs = [i.cuda() for i in inputs]
         optimizer.zero_grad()
         outputs, labels = model(inputs)
@@ -153,6 +155,7 @@ def validate(loader, model, criterion, epoch):
         for i, inputs in tqdm(enumerate(loader)):
             inputs = [i.cuda() for i in inputs]
             outputs, labels = model(inputs)
+            print(torch.argmax(outputs, dim=1))
 
             batch_size = labels.size(0)
             total_loss += criterion(outputs, labels).item() * batch_size

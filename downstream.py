@@ -15,7 +15,8 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from models.context_free_network import ContextFreeNetwork
 from data.transforms import get_transforms_downstream_training, \
     get_transforms_downstream_validation, get_transforms_pretraining_contrastive_predictive_coding, \
-    get_transforms_downstream_contrastive_predictive_coding_validation
+    get_transforms_downstream_contrastive_predictive_coding_validation, get_transforms_pretraining_jigsaw_puzzle, \
+    get_transforms_downstream_jigsaw_puzzle_validation, get_transforms_downstream_jigsaw_puzzle_training
 from tqdm import tqdm
 from enum import Enum
 import torchsummary
@@ -121,6 +122,7 @@ def main(args):
         model.load_state_dict(model_dict)
 
     elif args.pretrain_task is PretrainTask.jigsaw_puzzle:
+        """
         model_dict = model.state_dict()
         pretrained_dict = torch.load(args.weight_init)
 
@@ -139,6 +141,37 @@ def main(args):
 
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
+        """
+
+        pretrained_dict = torch.load(args.weight_init)
+
+        # change encoder to be same as in pretraining
+        encoder_dim = pretrained_dict["encoder.net.mlp_head.1.weight"].size()[0]
+        num_features = model.net.mlp_head[1].in_features
+        model.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=encoder_dim).cuda()
+
+        # do not use last layer from pretrain
+        input_dim = pretrained_dict['fc7.weight'].size()[1]
+        del pretrained_dict['fc9.weight']
+        del pretrained_dict['fc9.bias']
+
+        encoder = model
+        model = ContextFreeNetwork(encoder, input_dim, 10).cuda()
+
+        model_dict = model.state_dict()
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
+
+        last_layer = model.fc9
+
+        # args from pretraining
+        args.number_of_permutations = 64
+        args.num_tiles_per_dim = 3
+        args.splits = args.num_tiles_per_dim**2
+
+        input_dims = (args.splits, 3, args.image_size, args.image_size)
+        transform = get_transforms_downstream_jigsaw_puzzle_training(args)
+        transform_validation = get_transforms_downstream_jigsaw_puzzle_validation(args)
     elif args.pretrain_task is PretrainTask.cpc:
         model_dict = model.state_dict()
         pretrained_dict = torch.load(args.weight_init)
@@ -148,7 +181,7 @@ def main(args):
             del pretrained_dict['encoder.net.fc.bias']
             #  TODO
         else:
-            encoder_dim = pretrained_dict["encoder.net.mlp_head.1.weight"].size()[1]
+            encoder_dim = pretrained_dict["encoder.net.mlp_head.1.weight"].size()[0]
             num_features = model.net.mlp_head[1].in_features
             model.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=encoder_dim).cuda()
 

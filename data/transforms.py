@@ -47,17 +47,24 @@ class DivideInTiles:
         self.num_tiles_per_dim = num_tiles_per_dim
 
     def __call__(self, x):
+        if isinstance(x, tuple):
+            images, labels = x
+        else:
+            images = x
         # x has shape (C x H x W)
-        patch_height = x.size()[1] // self.num_tiles_per_dim
-        patch_width = x.size()[2] // self.num_tiles_per_dim
+        patch_height = images.size()[1] // self.num_tiles_per_dim
+        patch_width = images.size()[2] // self.num_tiles_per_dim
         patches = []
         for i in range(self.num_tiles_per_dim):
             for j in range(self.num_tiles_per_dim):
-                patches.append(x[:, j * patch_height:j * patch_height + patch_height,
+                patches.append(images[:, j * patch_height:j * patch_height + patch_height,
                                i * patch_width:i * patch_width + patch_width])
         # labels = list(range(self.num_tiles_per_dim**2))
         # assert len(patches) == len(labels)
-        return patches  # , labels
+        if isinstance(x, tuple):
+            return patches, labels
+        else:
+            return patches
 
 
 class ShuffleTiles:
@@ -285,6 +292,32 @@ def get_transforms_pretraining_moco(args):
     ])
     train_transform = TwoCropsTransform(transform_each_crop)
     return train_transform
+
+
+def get_transforms_downstream_jigsaw_puzzle_training(args):
+    train_transform = Compose([
+        ToTensor(),
+        Resize(args.image_size*4),
+        #ApplyOnList(ColorChannelJitter(2)),  # Has no purpose for the ViT, because image patch is flattened.
+        RandomCrop(int(225/256*args.image_size*4)),
+        DivideInTiles(args.num_tiles_per_dim),
+        ApplyOnList(RandomCrop(args.image_size)),
+        ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
+        ApplyOnList(RandomGrayscale(p=0.3)),
+        CollateList()
+    ])
+    return train_transform
+
+
+def get_transforms_downstream_jigsaw_puzzle_validation(args):
+    val_transform = Compose([
+        ToTensor(),
+        Resize(args.image_size * 3),
+        DivideInTiles(args.num_tiles_per_dim),
+        ApplyOnList(Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())),
+        CollateList()
+    ])
+    return val_transform
 
 
 def get_transforms_downstream_contrastive_predictive_coding_validation(args):
