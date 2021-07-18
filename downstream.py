@@ -45,7 +45,8 @@ def parse_arguments():
                         const=True, default=False,
                         help="Fine tune only the last layer")
     parser.add_argument('--output-root', type=str, default='results')
-    parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
+    parser.add_argument('--lr-ftl', type=float, default=0.0002, help='learning rate for fine tune last layer')
+    parser.add_argument('--lr-e2e', type=float, default=0.00005, help='learning rate for learning end-to-end')
     parser.add_argument('--weight-decay', type=float, default=0.01, help='weight decay')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
     parser.add_argument('--epochs', type=int, default=60, help='epochs')
@@ -122,27 +123,6 @@ def main(args):
         model.load_state_dict(model_dict)
 
     elif args.pretrain_task is PretrainTask.jigsaw_puzzle:
-        """
-        model_dict = model.state_dict()
-        pretrained_dict = torch.load(args.weight_init)
-
-        if args.resnet:
-            del pretrained_dict['encoder.net.fc.weight']
-            del pretrained_dict['encoder.net.fc.bias']
-        else:
-            del pretrained_dict['encoder.net.mlp_head.1.weight']
-            del pretrained_dict['encoder.net.mlp_head.1.bias']
-
-        for key in list(pretrained_dict.keys()):
-            pretrained_dict[key.replace("encoder.", "")] = pretrained_dict.pop(key)
-        for i in range(7, 10):
-            del pretrained_dict[f'fc{i}.weight']
-            del pretrained_dict[f'fc{i}.bias']
-
-        model_dict.update(pretrained_dict)
-        model.load_state_dict(model_dict)
-        """
-
         pretrained_dict = torch.load(args.weight_init)
 
         # change encoder to be same as in pretraining
@@ -226,10 +206,13 @@ def main(args):
         raise ValueError
 
     if args.fine_tune_last_layer:
+        args.lr = args.lr_ftl
         disable_gradients(model)
 
         for x in last_layer.parameters():
             x.requires_grad = True
+    else:
+        args.lr = args.lr_e2e
 
     logger.info(model)
     torchsummary.summary(model, input_dims, args.bs)
