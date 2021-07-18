@@ -9,4 +9,4 @@ See ```run.ipynb``` for further instructions or run it in Colab.
 - [x] Contrastive predictive coding
 - [ ] Masked patch prediction
 - [ ] Contrastive multiview coding
-- [ ] Momentum contrast 
+- [x] Momentum contrast 
