@@ -10,6 +10,8 @@ class ContextFreeNetwork(nn.Module):
         self.encoder = encoder
         self.fc7 = nn.Linear(input_dim, 4096)
         self.fc8 = nn.Linear(4096, num_classes)
+        # we only used 2 instead of 3 linear layers, because the original last layer was very small and lead to bad
+        # performance in the downstream task when only fine tuning the last layer.
 
     def forward(self, x):
         # x has shape (N, 9, 1, H, W)

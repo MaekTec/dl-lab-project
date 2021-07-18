@@ -31,7 +31,9 @@ class MoCoNetwork(nn.Module):
         N = len(x_q)
 
         q = self.f_q(x_q)  # NxC
+        q = nn.functional.normalize(q, dim=1)  # L2-norm
         k = self.f_k(x_k).detach()  # NxC
+        k = nn.functional.normalize(k, dim=1)  # L2-norm
 
         # positive logits: Nx1
         l_pos = torch.matmul(torch.unsqueeze(q, dim=1), torch.unsqueeze(k, 2)).view(N, 1)  # (N,1,C) @ (N,C,1)
