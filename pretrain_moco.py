@@ -155,7 +155,6 @@ def validate(loader, model, criterion, epoch):
         for i, inputs in tqdm(enumerate(loader)):
             inputs = [i.cuda() for i in inputs]
             outputs, labels = model(inputs)
-            print(torch.argmax(outputs, dim=1))
 
             batch_size = labels.size(0)
             total_loss += criterion(outputs, labels).item() * batch_size
