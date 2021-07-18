@@ -121,8 +121,8 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
     total = 0
     model.train()
     for i, inputs in tqdm(enumerate(loader)):
-        if ((i+1) % 30) == 0:
-            break
+        #if ((i+1) % 30) == 0:
+        #    break
         inputs = [i.cuda() for i in inputs]
         optimizer.zero_grad()
         outputs, labels = model(inputs)
