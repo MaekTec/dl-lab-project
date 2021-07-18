@@ -152,8 +152,8 @@ def main(args):
 
         # do not use last layer from pretrain
         input_dim = pretrained_dict['fc7.weight'].size()[1]
-        del pretrained_dict['fc9.weight']
-        del pretrained_dict['fc9.bias']
+        del pretrained_dict['fc8.weight']
+        del pretrained_dict['fc8.bias']
 
         encoder = model
         model = ContextFreeNetwork(encoder, input_dim, 10).cuda()
@@ -162,7 +162,7 @@ def main(args):
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
 
-        last_layer = model.fc9  # use last two layers, because last layer is very small
+        last_layer = model.fc8  # use last two layers, because last layer is very small
 
         # args from pretraining
         args.number_of_permutations = 64

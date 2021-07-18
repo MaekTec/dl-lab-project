@@ -9,14 +9,12 @@ class ContextFreeNetwork(nn.Module):
         super().__init__()
         self.encoder = encoder
         self.fc7 = nn.Linear(input_dim, 4096)
-        self.fc8 = nn.Linear(4096, 4096)
-        self.fc9 = nn.Linear(4096, num_classes)
+        self.fc8 = nn.Linear(4096, num_classes)
 
     def forward(self, x):
         # x has shape (N, 9, 1, H, W)
         x = [F.relu(self.encoder(x[:, i, ...])) for i in range(x.shape[1])]
         x = torch.cat(x, dim=1)
         x = F.relu(self.fc7(x))
-        x = F.relu(self.fc8(x))
-        x = self.fc9(x)
+        x = self.fc8(x)
         return x
