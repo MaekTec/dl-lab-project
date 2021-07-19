@@ -9,6 +9,8 @@ from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
+from PatchPredictionNetwork import PatchPredictionLoss,PatchPredictionNetwork
+from torchvision.transforms import transforms
 
 # https://arxiv.org/pdf/1803.07728.pdf
 
@@ -22,7 +24,7 @@ def parse_arguments():
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
-    parser.add_argument('--bs', type=int, default=256, help='batch_size')
+    parser.add_argument('--bs', type=int, default=8, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
                         const=True, default=False,
@@ -48,18 +50,26 @@ def main(args):
     logger = get_logger(args.logs_folder, args.exp_name)
 
     model = ViTBackbone(image_size=256, patch_size=32,num_classes=1000)
+    patch_prediction_network = PatchPredictionNetwork(transformer=model,patch_size=16,dim=1024,mask_prob=0.15, replace_prob=0.50)
 
 
     # load dataset
     data_root = args.data_folder
-    train_transform = get_transforms_pretraining_mpp(args)
+    train_transform = get_transforms_pretraining_mpp()
+    train_transform = get_transforms_pretraining_rotation(args)
     train_data = CIFAR10Custom(data_root, train=True, transform=train_transform, download=True, unlabeled=True)
     val_data = CIFAR10Custom(data_root, val=True, transform=train_transform, download=True, unlabeled=True)
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=2,pin_memory=True, drop_last=True)
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=True, num_workers=2,pin_memory=True, drop_last=True)
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=2,pin_memory=True, drop_last=True, )
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=True, num_workers=2,pin_memory=True, drop_last=True,)
+
 
     #criterion = mpp_loss()
     #optimizer =
+    criterion = PatchPredictionLoss(patch_size=16, channels=3, output_channel_bits=3, max_pixel_val=1.0, mean=None, std=None)
+    optimizer = torch.optim.Adam(patch_prediction_network.parameters(), lr=args.lr)
+
+    train_loss, train_acc = train(train_loader,patch_prediction_network,criterion,optimizer,1)
+
 
 
 # train one epoch over the whole training dataset.
@@ -69,7 +79,7 @@ def train(loader, model, criterion, optimizer, epoch):
     total = 0
     model.train()
     for i, (inputs, labels) in enumerate(loader):
-        print(f"Trainstep: {i}")
+        #print(f"Trainstep: {i}")
         inputs = inputs.cuda()
         labels = labels.cuda()
         optimizer.zero_grad()
