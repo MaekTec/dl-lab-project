@@ -96,7 +96,7 @@ def train(loader, model, criterion, optimizer, epoch):
     total = 0
     model.train()
     for i, inputs in enumerate(loader):
-        print(f"Trainstep: {i}")
+        #print(f"Trainstep: {i}")
         inputs = inputs.cuda()
         #labels = labels.cuda()
         optimizer.zero_grad()
