@@ -88,6 +88,7 @@ def main(args):
         if val_loss < best_val_loss:
             torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
             best_val_loss = val_loss
+            print("model saved")
 
 # train one epoch over the whole training dataset.
 def train(loader, model, criterion, optimizer, epoch):
