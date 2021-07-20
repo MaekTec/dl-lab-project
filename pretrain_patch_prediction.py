@@ -39,7 +39,7 @@ def parse_arguments():
 
     args.exp_name += "_{}".format(args.exp_suffix)
 
-    args.output_folder = check_dir(os.path.join(args.output_root, 'pretrain_rotation', args.exp_name))
+    args.output_folder = check_dir(os.path.join(args.output_root, 'pretrain_patch_prediction', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
