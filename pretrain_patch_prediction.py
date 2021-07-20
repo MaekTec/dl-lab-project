@@ -26,6 +26,7 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--bs', type=int, default=2, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
+    parser.add_argument('--patch_size', type=int, default=16)
     parser.add_argument("--resnet", type=str2bool, nargs='?',
                         const=True, default=False,
                         help="Use ResNet instead of Vit")
@@ -49,8 +50,8 @@ def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
 
-    model = ViTBackbone(image_size=64, patch_size=16,num_classes=1000).cuda()
-    patch_prediction_network = PatchPredictionNetwork(transformer=model,patch_size=16,dim=1024,mask_prob=0.15, replace_prob=0.50).cuda()
+    model = ViTBackbone(image_size=64, patch_size=args.patch_size,num_classes=1000).cuda()
+    patch_prediction_network = PatchPredictionNetwork(transformer=model,patch_size=args.patch_size,dim=1024,mask_prob=0.15, replace_prob=0.50).cuda()
 
     # load dataset
     data_root = args.data_folder
@@ -62,7 +63,7 @@ def main(args):
 
     #criterion = mpp_loss()
     #optimizer =
-    criterion = PatchPredictionLoss(patch_size=16, channels=3, output_channel_bits=3, max_pixel_val=1.0, mean=None, std=None).cuda()
+    criterion = PatchPredictionLoss(patch_size=args.patch_size, channels=3, output_channel_bits=3, max_pixel_val=1.0, mean=None, std=None).cuda()
     optimizer = torch.optim.Adam(patch_prediction_network.parameters(), lr=args.lr)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
