@@ -26,13 +26,12 @@ class ViTBackbone(nn.Module):
 
 
 class ResNet18Backbone(nn.Module):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes):
         super().__init__()
-        self.features = IntermediateLayerGetter(resnet18(pretrained=pretrained), {"avgpool": "out"}).cuda()
-        self.fc = nn.Linear(512, num_classes, bias=True)
-        nn.init.xavier_uniform_(self.fc.weight)
+        self.net = resnet18(pretrained=False)
+        num_features = self.net.fc.in_features
+        self.net.fc = nn.Linear(num_features, num_classes, bias=True)
+        nn.init.xavier_uniform_(self.net.fc.weight)
 
     def forward(self, x):
-        x = self.features(x)["out"]
-        x = torch.flatten(x, 1)
-        return self.fc(x)
+        return self.net(x)

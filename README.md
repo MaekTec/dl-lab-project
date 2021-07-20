@@ -1,12 +1,12 @@
 # Deep Learning Project: Contrastive Self-Supervision
 
 ## Installation
-```
-conda env create --file environment.yml
-conda activate dl_lab_project
-```
+See ```run.ipynb``` for further instructions or run it in Colab.
 
-## Export environment
-```
-conda env export --name dl_lab_project > environment.yml
-```
+## Goals
+- [x] Rotation
+- [x] Jigsaw puzzle
+- [x] Contrastive predictive coding
+- [ ] Masked patch prediction
+- [ ] Contrastive multiview coding
+- [x] Momentum contrast 

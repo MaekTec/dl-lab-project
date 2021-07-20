@@ -65,6 +65,7 @@ class PatchPredictionNetwork(nn.Module):
 
     def forward(self, input, **kwargs):
         transformer = self.transformer
+        print(transformer)
         #print(input.shape)
         #keep copy of original image.. used for Loss
         img = input.detach().clone()
@@ -105,7 +106,7 @@ class PatchPredictionNetwork(nn.Module):
 
         #print("output shape 1:", output.shape)
         #bring back to image dimension for loss calculation
-        output = self.to_bits(output)
+        #output = self.to_bits(output)
         #print("output shape 2:", output.shape)
         #remove the channel first layer CLS
         output = output[:,1:,:]

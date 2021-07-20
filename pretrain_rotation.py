@@ -4,16 +4,16 @@ import argparse
 import torch
 from pprint import pprint
 from data.transforms import get_transforms_pretraining_rotation, custom_collate
-from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log, str2bool
+from utils import check_dir, set_random_seed, get_logger, accuracy, save_in_log, str2bool
 from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
+from tqdm import tqdm
 
 # https://arxiv.org/pdf/1803.07728.pdf
 
 set_random_seed(0)
-global_step = 0
 writer = SummaryWriter()
 
 
@@ -22,8 +22,10 @@ def parse_arguments():
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
+    parser.add_argument('--weight-decay', type=float, default=0.0, help='weight decay')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
+    parser.add_argument('--image-size', type=int, default=64, help='size of image')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
                         const=True, default=False,
                         help="Use ResNet instead of Vit")
@@ -31,7 +33,7 @@ def parse_arguments():
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
 
-    hparam_keys = ["lr", "bs", "epochs", "resnet"]
+    hparam_keys = ["lr", "weight_decay", "bs", "epochs", "image_size", "resnet"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
@@ -49,12 +51,12 @@ def main(args):
 
     # build model and load weights
     if args.resnet:
-        model = ResNet18Backbone(pretrained=False, num_classes=4)
+        model = ResNet18Backbone(num_classes=4).cuda()
     else:
-        model = ViTBackbone(image_size=128, patch_size=16, num_classes=4).cuda()
+        model = ViTBackbone(image_size=args.image_size, patch_size=16, num_classes=4).cuda()
 
-    print(model)
-    torchsummary.summary(model, (3, 128, 128), 256)
+    logger.info(model)
+    torchsummary.summary(model, (3, args.image_size, args.image_size), args.bs)
 
     # load dataset
     data_root = args.data_folder
@@ -66,9 +68,8 @@ def main(args):
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=False, num_workers=4,
                                              pin_memory=True, drop_last=False, collate_fn=custom_collate)
 
-    # TODO: loss function
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
@@ -80,8 +81,7 @@ def main(args):
     # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, epoch)
-        scheduler.step()
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
         val_loss, val_acc = validate(val_loader, model, criterion, epoch)
 
         logger.info('Training loss: {}'.format(train_loss))
@@ -96,13 +96,12 @@ def main(args):
 
 
 # train one epoch over the whole training dataset.
-def train(loader, model, criterion, optimizer, epoch):
+def train(loader, model, criterion, optimizer, scheduler, epoch):
     total_loss = 0
     total_accuracy = 0
     total = 0
     model.train()
-    for i, (inputs, labels) in enumerate(loader):
-        print(f"Trainstep: {i}")
+    for i, (inputs, labels) in tqdm(enumerate(loader)):
         inputs = inputs.cuda()
         labels = labels.cuda()
         optimizer.zero_grad()
@@ -115,6 +114,7 @@ def train(loader, model, criterion, optimizer, epoch):
         total_loss += criterion(outputs, labels).item() * batch_size
         total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
+    scheduler.step()
 
     mean_train_loss = total_loss / total
     mean_train_accuracy = total_accuracy / total
@@ -132,7 +132,7 @@ def validate(loader, model, criterion, epoch):
     total = 0
     model.eval()
     with torch.no_grad():
-        for i, (inputs, labels) in enumerate(loader):
+        for i, (inputs, labels) in tqdm(enumerate(loader)):
             inputs = inputs.cuda()
             labels = labels.cuda()
             outputs = model(inputs)
