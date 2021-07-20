@@ -24,7 +24,7 @@ def parse_arguments():
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
-    parser.add_argument('--bs', type=int, default=8, help='batch_size')
+    parser.add_argument('--bs', type=int, default=2, help='batch_size')
     parser.add_argument('--epochs', type=int, default=15, help='epochs')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
                         const=True, default=False,
@@ -49,28 +49,44 @@ def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
 
-    model = ViTBackbone(image_size=256, patch_size=32,num_classes=1000)
-    patch_prediction_network = PatchPredictionNetwork(transformer=model,patch_size=16,dim=1024,mask_prob=0.15, replace_prob=0.50)
-
+    model = ViTBackbone(image_size=64, patch_size=16,num_classes=1000).cuda()
+    patch_prediction_network = PatchPredictionNetwork(transformer=model,patch_size=16,dim=1024,mask_prob=0.15, replace_prob=0.50).cuda()
 
     # load dataset
     data_root = args.data_folder
     train_transform = get_transforms_pretraining_mpp()
-    train_transform = get_transforms_pretraining_rotation(args)
     train_data = CIFAR10Custom(data_root, train=True, transform=train_transform, download=True, unlabeled=True)
     val_data = CIFAR10Custom(data_root, val=True, transform=train_transform, download=True, unlabeled=True)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=2,pin_memory=True, drop_last=True, )
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=True, num_workers=2,pin_memory=True, drop_last=True,)
 
-
     #criterion = mpp_loss()
     #optimizer =
-    criterion = PatchPredictionLoss(patch_size=16, channels=3, output_channel_bits=3, max_pixel_val=1.0, mean=None, std=None)
+    criterion = PatchPredictionLoss(patch_size=16, channels=3, output_channel_bits=3, max_pixel_val=1.0, mean=None, std=None).cuda()
     optimizer = torch.optim.Adam(patch_prediction_network.parameters(), lr=args.lr)
 
-    train_loss, train_acc = train(train_loader,patch_prediction_network,criterion,optimizer,1)
+    expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
+    logger.info(expdata)
+    logger.info('train_data {}'.format(train_data.__len__()))
+    logger.info('val_data {}'.format(val_data.__len__()))
 
+    best_val_loss = np.inf
 
+    for epoch in range(args.epochs):
+        logger.info("Epoch {}".format(epoch))
+        train_loss, train_acc = train(train_loader, patch_prediction_network, criterion, optimizer, epoch)
+        #scheduler.step()
+        val_loss, val_acc = validate(val_loader, patch_prediction_network, criterion, epoch)
+
+        logger.info('Training loss: {}'.format(train_loss))
+        logger.info('Training accuracy: {}'.format(train_acc))
+        logger.info('Validation loss: {}'.format(val_loss))
+        logger.info('Validation accuracy: {}'.format(val_acc))
+
+        # save model
+        if val_loss < best_val_loss:
+            torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
+            best_val_loss = val_loss
 
 # train one epoch over the whole training dataset.
 def train(loader, model, criterion, optimizer, epoch):
@@ -78,19 +94,20 @@ def train(loader, model, criterion, optimizer, epoch):
     total_accuracy = 0
     total = 0
     model.train()
-    for i, (inputs, labels) in enumerate(loader):
-        #print(f"Trainstep: {i}")
+    for i, inputs in enumerate(loader):
+        print(f"Trainstep: {i}")
         inputs = inputs.cuda()
-        labels = labels.cuda()
+        #labels = labels.cuda()
         optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
+        #print(inputs.shape)
+        outputs, masks = model(inputs)
+        loss = criterion(outputs, inputs, masks)
         loss.backward()
         optimizer.step()
 
-        batch_size = labels.size(0)
-        total_loss += criterion(outputs, labels).item() * batch_size
-        total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
+        batch_size = inputs.shape[0]
+        total_loss += loss.item() * batch_size
+        #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
 
     mean_train_loss = total_loss / total
@@ -101,7 +118,6 @@ def train(loader, model, criterion, optimizer, epoch):
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
     return mean_train_loss, mean_train_accuracy
 
-
 # validation function.
 def validate(loader, model, criterion, epoch):
     total_loss = 0
@@ -109,14 +125,13 @@ def validate(loader, model, criterion, epoch):
     total = 0
     model.eval()
     with torch.no_grad():
-        for i, (inputs, labels) in enumerate(loader):
+        for i , inputs in enumerate(loader):
             inputs = inputs.cuda()
-            labels = labels.cuda()
-            outputs = model(inputs)
+            outputs, masks = model(inputs)
 
-            batch_size = labels.size(0)
-            total_loss += criterion(outputs, labels).item() * batch_size
-            total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
+            batch_size = inputs.shape[0]
+            total_loss += criterion(outputs, inputs, masks).item() * batch_size
+            #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
             total += batch_size
 
     mean_val_loss = total_loss / total

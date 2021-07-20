@@ -49,7 +49,8 @@ class PatchPredictionNetwork(nn.Module):
         self.transformer = transformer #ViT transformer
 
         #output transformation
-        self.to_bits = nn.Linear(dim, 2**(output_channel_bits * channels))
+        self.to_bits = nn.Linear(dim, 2**(output_channel_bits * channels)).cuda()
+        #print("self.to_bits=",self.to_bits)
 
         # vit related dimensions
         self.patch_size = patch_size
@@ -64,9 +65,10 @@ class PatchPredictionNetwork(nn.Module):
 
     def forward(self, input, **kwargs):
         transformer = self.transformer
-
+        #print(input.shape)
         #keep copy of original image.. used for Loss
-        img = input.clone().detach()
+        img = input.detach().clone()
+
 
         #reshaping of images into patches
         p = self.patch_size
@@ -74,7 +76,7 @@ class PatchPredictionNetwork(nn.Module):
         # breaks down each image into patch sequence
         # (n,3,64,64) -> (n, 16, 768)
 
-        masked_input = input.clone.detach() # variable used for storing the masked img
+        masked_input = input.detach().clone() # variable used for storing the masked img
 
         mask = get_mask_token_prob(input, self.mask_prob)
 
@@ -86,27 +88,29 @@ class PatchPredictionNetwork(nn.Module):
         masked_input[bool_mask_replace] = self.mask_token
 
         #convert the masked input into a linear embedding of patches
-        masked_input = transformer.to_patch_embedding[-1](masked_input)
+        masked_input = transformer.net.to_patch_embedding[-1](masked_input)
 
         #append CLS token to start of each sequence
         #CLS tokens are used to denote start of a sequence
         b,n,i = masked_input.shape
-        cls_token_arr = repeat(transformer.cls_token, '() n d -> b n d', b=b)
+        cls_token_arr = repeat(transformer.net.cls_token, '() n d -> b n d', b=b)
         masked_input = torch.cat((cls_token_arr,masked_input), dim=1)
 
         #add positonal embeddings
-        pos_emmbeddings_arr= transformer.pos_emeddings[:, :(n + 1)]
+        pos_emmbeddings_arr= transformer.net.pos_embedding[:, :(n + 1)]
         masked_input = masked_input + pos_emmbeddings_arr
 
         # pass masked_image to transformer
-        output = transformer.transformer(masked_input, **kwargs)
+        output = transformer.net.transformer(masked_input, **kwargs)
 
+        #print("output shape 1:", output.shape)
         #bring back to image dimension for loss calculation
         output = self.to_bits(output)
+        #print("output shape 2:", output.shape)
         #remove the channel first layer CLS
         output = output[:,1:,:]
 
-        return output
+        return output , mask
 
 class PatchPredictionLoss(nn.Module):
     def __init__( self,patch_size,channels,output_channel_bits,max_pixel_val,mean,std):
@@ -123,7 +127,7 @@ class PatchPredictionLoss(nn.Module):
         bin_size = self.max_pixel_val / (2 ** self.output_channel_bits)
         device = target.device
 
-        target = target * self.std + self.mean # denormalise the data
+        #target = target * self.std + self.mean # denormalise the data
 
         # reshape target to patches
         target = target.clamp(max = self.max_pixel_val) # clamp just in case
