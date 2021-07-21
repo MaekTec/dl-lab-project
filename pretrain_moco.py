@@ -142,9 +142,7 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
 
     mean_train_loss = total_loss / total
     mean_train_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/train'] = mean_train_loss
-    scalar_dict['Accuracy/train'] = mean_train_accuracy
+    scalar_dict = {'Loss/train': mean_train_loss, 'Accuracy/train': mean_train_accuracy}
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
     return mean_train_loss, mean_train_accuracy
 
@@ -167,9 +165,7 @@ def validate(loader, model, criterion, epoch):
 
     mean_val_loss = total_loss / total
     mean_val_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/val'] = mean_val_loss
-    scalar_dict['Accuracy/val'] = mean_val_accuracy
+    scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
 
     return mean_val_loss, mean_val_accuracy

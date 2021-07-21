@@ -1,25 +1,21 @@
 import os
 import pickle
-
+import torch.nn as nn
 import numpy as np
 import argparse
 import torch
 from pprint import pprint
-
 from models.contrastive_predictive_coding_network import ContrastivePredictiveCodingNetworkLinearClassification
-from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log, str2bool
+from training import train, validate
+from utils import check_dir, set_random_seed, get_logger, str2bool
 from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
-import torch.nn as nn
-import torchvision.transforms as transforms
-from torch.optim.lr_scheduler import CosineAnnealingLR
 from models.context_free_network import ContextFreeNetwork
 from data.transforms import get_transforms_downstream_training, \
     get_transforms_downstream_validation, get_transforms_pretraining_contrastive_predictive_coding, \
     get_transforms_downstream_contrastive_predictive_coding_validation, get_transforms_pretraining_jigsaw_puzzle, \
     get_transforms_downstream_jigsaw_puzzle_validation, get_transforms_downstream_jigsaw_puzzle_training
-from tqdm import tqdm
 from enum import Enum
 import torchsummary
 
@@ -270,12 +266,12 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch, writer)
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
 
-        val_loss, val_acc = validate(val_loader, model, criterion, epoch)
+        val_loss, val_acc = validate(val_loader, model, criterion, epoch, writer)
 
         logger.info('Validation loss: {}'.format(val_loss))
         logger.info('Validation accuracy: {}'.format(val_acc))
@@ -284,62 +280,6 @@ def main(args):
         if val_loss < best_val_loss:
             torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
             best_val_loss = val_loss
-
-
-def train(loader, model, criterion, optimizer, scheduler, epoch):
-    total_loss = 0
-    total_accuracy = 0
-    total = 0
-    model.train()
-    for i, (inputs, labels) in tqdm(enumerate(loader)):
-        inputs = inputs.cuda()
-        labels = labels.cuda()
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-
-        batch_size = labels.size(0)
-        total_loss += criterion(outputs, labels).item() * batch_size
-        total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
-        total += batch_size
-    scheduler.step()
-
-    mean_train_loss = total_loss / total
-    mean_train_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/train'] = mean_train_loss
-    scalar_dict['Accuracy/train'] = mean_train_accuracy
-    save_in_log(writer, epoch, scalar_dict=scalar_dict)
-    return mean_train_loss, mean_train_accuracy
-
-
-# validation function.
-def validate(loader, model, criterion, epoch):
-    total_loss = 0
-    total_accuracy = 0
-    total = 0
-    model.eval()
-    with torch.no_grad():
-        for i, (inputs, labels) in tqdm(enumerate(loader)):
-            inputs = inputs.cuda()
-            labels = labels.cuda()
-            outputs = model(inputs)
-
-            batch_size = labels.size(0)
-            total_loss += criterion(outputs, labels).item() * batch_size
-            total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
-            total += batch_size
-
-    mean_val_loss = total_loss / total
-    mean_val_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/val'] = mean_val_loss
-    scalar_dict['Accuracy/val'] = mean_val_accuracy
-    save_in_log(writer, epoch, scalar_dict=scalar_dict)
-
-    return mean_val_loss, mean_val_accuracy
 
 
 if __name__ == '__main__':
