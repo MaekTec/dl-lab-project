@@ -15,14 +15,17 @@ from models.context_free_network import ContextFreeNetwork
 import pickle
 
 """
-https://arxiv.org/pdf/1603.09246.pdf
-fixed random permutation set
-to avoid learning of shortcuts:
-- more than one permutation per image
-- shuffle tiles as much as possible with Hamming distance
-- random gap between tiles
-- resize to 256 and random crop 225x225, split in 9 tiles each 75x75 and extract 64x64 from each with random shift
-- grayscale images
+Paper: https://arxiv.org/pdf/1603.09246.pdf
+- predict id in fixed random permutation set
+- to avoid learning of shortcuts:
+    - more than one permutation per image
+    - shuffle tiles as much as possible with Hamming distance
+    - transforms:
+        - resize to 256
+        - random crop 225x225
+        - split in 9 tiles each 75x75
+        - extract 64x64 from each with random shift (random gap between tiles)
+        - random grayscale images
 """
 
 set_random_seed(0)
@@ -56,7 +59,7 @@ def parse_arguments():
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
-    args.splits = args.num_tiles_per_dim**2
+    args.splits = args.num_tiles_per_dim**2  # number of tiles/patches
 
     pickle.dump(args, open(os.path.join(args.output_folder, "args.p"), "wb"))
 

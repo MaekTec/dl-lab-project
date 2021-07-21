@@ -18,26 +18,21 @@ from models.context_free_network import ContextFreeNetwork
 from tqdm import tqdm
 
 """
-https://arxiv.org/pdf/1905.09272.pdf (cpc v2)
+Papers: https://arxiv.org/pdf/1905.09272.pdf (cpc v2), https://arxiv.org/pdf/1807.03748.pdf (original cpc)
 in paper they use the following schema:
 - predict from top to down and vise-versa
-- 80x80 pixel patches with 36 pixel stride
-- resize the image to 300×300 pixels and randomly ex-tract a 260×260 pixel crop,
-  then divide this image into a 6×6 grid of 80×80 patches
-- predict from left to right and vise-versa
-- data augmentations (randomly drop 2 of 3 color channels, shearing, rotation, elastic deformations, color transforms, ...)
+- resize the image to 300×300 pixels and randomly extract a 260×260 pixel crop,
+  then divide this image into a 6×6 grid of 80×80 patches with 36 pixel stride
+- data augmentations (randomly drop 2 of 3 color channels, shearing, rotation,
+  elastic deformations, color transforms, ...)
+- see appendix of paper for more details
 
 This implementation is slightly different from above, due to the smaller image size 
 and not all data augmentation are public available.
 
-TODO:
-- mean pool?
-
 Helpful implementations:
 https://github.com/SeonghoBaek/CPC/blob/master/cpc.py
 https://github.com/davidtellez/contrastive-predictive-coding-images
-
-https://arxiv.org/pdf/1807.03748.pdf (original cpc)
 """
 
 set_random_seed(0)
@@ -91,7 +86,8 @@ def main(args):
     model = ContrastivePredictiveCodingNetwork(encoder, encoder_out_dim, args.num_patches_per_dim).cuda()
 
     logger.info(model)
-    #torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
+    # doesn't work due to tuple output of model (loss, acc)
+    # torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
 
     # load dataset
     data_root = args.data_folder

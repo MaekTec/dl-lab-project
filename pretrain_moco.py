@@ -79,7 +79,8 @@ def main(args):
     model = MoCoNetwork(encoder, encoder_out_dim).cuda()
 
     logger.info(model)
-    #torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
+    # doesn't work due to tuple output of model (outputs, labels)
+    # torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
 
     # load dataset
     data_root = args.data_folder

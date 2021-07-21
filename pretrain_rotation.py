@@ -13,7 +13,9 @@ from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
 
-# https://arxiv.org/pdf/1803.07728.pdf
+"""
+Paper: https://arxiv.org/pdf/1803.07728.pdf
+"""
 
 set_random_seed(0)
 writer = SummaryWriter()
@@ -53,7 +55,7 @@ def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
 
-    # build model and load weights
+    # build model
     if args.resnet:
         model = ResNet18Backbone(num_classes=4).cuda()
     else:
@@ -82,7 +84,6 @@ def main(args):
     logger.info('val_data {}'.format(val_data.__len__()))
 
     best_val_loss = np.inf
-    # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
         train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch, writer)
