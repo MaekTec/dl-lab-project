@@ -189,7 +189,7 @@ def get_model(args):
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
 
-        args.num_patches_per_dim = args.args_pretrain.num_tiles_per_dim
+        args.num_patches_per_dim = args.args_pretrain.num_patches_per_dim
         encoder = model
         model = ContrastivePredictiveCodingNetworkLinearClassification(encoder, encoder_dim, args.num_patches_per_dim,
                                                                        10).cuda()
