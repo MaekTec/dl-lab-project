@@ -1,4 +1,6 @@
 import os
+import pickle
+
 import numpy as np
 import argparse
 import torch
@@ -40,11 +42,16 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('pretrain_task', type=PretrainTask, choices=list(PretrainTask))
-    parser.add_argument('--weight-init', type=str, default="ImageNet")
+    parser.add_argument('--pretrain-path', type=str,
+                        default="Path to pretraining output folder (directory with models/, logs/")
+    parser.add_argument('--weight-init', type=str, default="models/ckpt_best.pth", help="weights within pretrain-path")
+    # use if pretraining has specific model args
+    parser.add_argument('--args-pretrain', type=str, default="args.p",
+                        help="args file from pretraining within pretrain_path")
+    parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument("--fine-tune-last-layer", type=str2bool, nargs='?',
                         const=True, default=False,
                         help="Fine tune only the last layer")
-    parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr-ftl', type=float, default=0.0002, help='learning rate for fine tune last layer')
     parser.add_argument('--lr-e2e', type=float, default=0.00005, help='learning rate for learning end-to-end')
     parser.add_argument('--weight-decay', type=float, default=0.01, help='weight decay')
@@ -58,7 +65,8 @@ def parse_arguments():
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
 
-    hparam_keys = ["pretrain_task", "fine_tune_last_layer", "lr", "weight_decay", "bs", "epochs", "image_size", "resnet"]
+    hparam_keys = ["pretrain_task", "fine_tune_last_layer", "lr_ftl", "lr_e2e", "weight_decay", "bs",
+                   "epochs", "image_size", "resnet"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
@@ -66,6 +74,11 @@ def parse_arguments():
     args.output_folder = check_dir(os.path.join(args.output_root, 'downstream', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
+
+    if args.args_pretrain is not None:
+        args.args_pretrain = pickle.load(open(os.path.join(args.pretrain_path, args.args_pretrain), "rb"))
+
+    pickle.dump(args, open(os.path.join(args.output_folder, "args.p"), "wb"))
 
     return args
 
@@ -84,9 +97,7 @@ def disable_gradients(model) -> None:
     return model
 
 
-def main(args):
-    logger = get_logger(args.logs_folder, args.exp_name)
-
+def get_model(args):
     # model
     if args.resnet:
         model = ResNet18Backbone(num_classes=10).cuda()
@@ -102,15 +113,12 @@ def main(args):
     else:
         last_layer = model.net.mlp_head
 
-    transform = get_transforms_downstream_training(args)
-    transform_validation = get_transforms_downstream_validation(args)
-
     if args.pretrain_task is PretrainTask.none:
         pass
 
     elif args.pretrain_task is PretrainTask.rotation:
         model_dict = model.state_dict()
-        pretrained_dict = torch.load(args.weight_init)
+        pretrained_dict = torch.load(os.path.join(args.pretrain_path, args.weight_init))
 
         if args.resnet:
             del pretrained_dict['net.fc.weight']
@@ -123,7 +131,7 @@ def main(args):
         model.load_state_dict(model_dict)
 
     elif args.pretrain_task is PretrainTask.jigsaw_puzzle:
-        pretrained_dict = torch.load(args.weight_init)
+        pretrained_dict = torch.load(os.path.join(args.pretrain_path, args.weight_init))
 
         # change encoder to be same as in pretraining
         encoder_dim = pretrained_dict["encoder.net.mlp_head.1.weight"].size()[0]
@@ -145,16 +153,14 @@ def main(args):
         last_layer = model.fc8  # use last two layers, because last layer is very small
 
         # args from pretraining
-        args.number_of_permutations = 64
-        args.num_tiles_per_dim = 3
-        args.splits = args.num_tiles_per_dim**2
+        args.number_of_permutations = args.args_pretrain.number_of_permutations
+        args.num_tiles_per_dim = args.args_pretrain.num_tiles_per_dim
+        args.splits = args.args_pretrain.splits
 
         input_dims = (args.splits, 3, args.image_size, args.image_size)
-        transform = get_transforms_downstream_jigsaw_puzzle_training(args)
-        transform_validation = get_transforms_downstream_jigsaw_puzzle_validation(args)
     elif args.pretrain_task is PretrainTask.cpc:
         model_dict = model.state_dict()
-        pretrained_dict = torch.load(args.weight_init)
+        pretrained_dict = torch.load(os.path.join(args.pretrain_path, args.weight_init))
 
         if args.resnet:
             del pretrained_dict['encoder.net.fc.weight']
@@ -174,18 +180,17 @@ def main(args):
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
 
-        num_patches_per_dim = 4
+        args.num_patches_per_dim = args.args_pretrain.num_tiles_per_dim
         encoder = model
-        model = ContrastivePredictiveCodingNetworkLinearClassification(encoder, encoder_dim, num_patches_per_dim, 10).cuda()
+        model = ContrastivePredictiveCodingNetworkLinearClassification(encoder, encoder_dim, args.num_patches_per_dim,
+                                                                       10).cuda()
         last_layer = model.fc
 
-        input_dims = (num_patches_per_dim**2, 3, args.image_size, args.image_size)
-        args.num_patches_per_dim = num_patches_per_dim
-        transform = get_transforms_pretraining_contrastive_predictive_coding(args)
-        transform_validation = get_transforms_downstream_contrastive_predictive_coding_validation(args)
+        input_dims = (args.args_pretrain.splits, 3, args.image_size, args.image_size)
+
     elif args.pretrain_task is PretrainTask.moco:
         model_dict = model.state_dict()
-        pretrained_dict = torch.load(args.weight_init)
+        pretrained_dict = torch.load(os.path.join(args.pretrain_path, args.weight_init))
 
         if args.resnet:
             del pretrained_dict['f_q.net.fc.weight']
@@ -204,6 +209,34 @@ def main(args):
         model.load_state_dict(model_dict)
     else:
         raise ValueError
+
+    return model, last_layer, input_dims
+
+
+def get_transforms(args):
+    transform = get_transforms_downstream_training(args)
+    transform_validation = get_transforms_downstream_validation(args)
+
+    if args.pretrain_task is PretrainTask.none:
+        pass
+    elif args.pretrain_task is PretrainTask.rotation:
+        pass
+    elif args.pretrain_task is PretrainTask.jigsaw_puzzle:
+        transform = get_transforms_downstream_jigsaw_puzzle_training(args)
+        transform_validation = get_transforms_downstream_jigsaw_puzzle_validation(args)
+    elif args.pretrain_task is PretrainTask.cpc:
+        transform = get_transforms_pretraining_contrastive_predictive_coding(args)
+        transform_validation = get_transforms_downstream_contrastive_predictive_coding_validation(args)
+    elif args.pretrain_task is PretrainTask.moco:
+        pass
+    return transform, transform_validation
+
+
+def main(args):
+    logger = get_logger(args.logs_folder, args.exp_name)
+
+    model, last_layer, input_dims = get_model(args)
+    transform, transform_validation = get_transforms(args)
 
     if args.fine_tune_last_layer:
         args.lr = args.lr_ftl
@@ -226,7 +259,6 @@ def main(args):
                                              pin_memory=True, drop_last=True)
 
     criterion = torch.nn.CrossEntropyLoss().cuda()
-    #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 

@@ -12,6 +12,7 @@ from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
 from models.context_free_network import ContextFreeNetwork
 from tqdm import tqdm
+import pickle
 
 """
 https://arxiv.org/pdf/1603.09246.pdf
@@ -56,6 +57,8 @@ def parse_arguments():
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
     args.splits = args.num_tiles_per_dim**2
+
+    pickle.dump(args, open(os.path.join(args.output_folder, "args.p"), "wb"))
 
     return args
 
@@ -119,6 +122,8 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
     total = 0
     model.train()
     for i, (inputs, labels) in tqdm(enumerate(loader)):
+        #if ((i+1) % 15) == 0:
+        #    break
         inputs = inputs.cuda()
         labels = labels.cuda()
         optimizer.zero_grad()

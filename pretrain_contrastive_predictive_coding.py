@@ -1,4 +1,6 @@
 import os
+import pickle
+
 import numpy as np
 import argparse
 import torch
@@ -69,6 +71,8 @@ def parse_arguments():
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
     args.splits = args.num_patches_per_dim**2
+
+    pickle.dump(args, open(os.path.join(args.output_folder, "args.p"), "wb"))
 
     return args
 

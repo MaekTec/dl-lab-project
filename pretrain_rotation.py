@@ -1,4 +1,6 @@
 import os
+import pickle
+
 import numpy as np
 import argparse
 import torch
@@ -41,6 +43,8 @@ def parse_arguments():
     args.output_folder = check_dir(os.path.join(args.output_root, 'pretrain_rotation', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
+
+    pickle.dump(args, open(os.path.join(args.output_folder, "args.p"), "wb"))
 
     return args
 
