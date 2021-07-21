@@ -24,7 +24,7 @@ v2: https://arxiv.org/pdf/2003.04297.pdf (this, but we use the MLP head from the
     - a query matches a key if they are encoded views (e.g., different crops) of the same image
 - InfoNCE
 - encoder output normalized with L2-norm, batch normalization?
-- 224×224-pixel  crop  is  taken  from  a  randomly resized image, and then undergoes random color jittering,
+- 224*224-pixel  crop  is  taken  from  a  randomly resized image, and then undergoes random color jittering,
   random horizontal flip, and random grayscale con-version
 - momentum = 0.999
 

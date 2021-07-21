@@ -21,8 +21,8 @@ from tqdm import tqdm
 Papers: https://arxiv.org/pdf/1905.09272.pdf (cpc v2), https://arxiv.org/pdf/1807.03748.pdf (original cpc)
 in paper they use the following schema:
 - predict from top to down and vise-versa
-- resize the image to 300×300 pixels and randomly extract a 260×260 pixel crop,
-  then divide this image into a 6×6 grid of 80×80 patches with 36 pixel stride
+- resize the image to 300×300 pixels and randomly extract a 260*260 pixel crop,
+  then divide this image into a 6*6 grid of 80*80 patches with 36 pixel stride
 - data augmentations (randomly drop 2 of 3 color channels, shearing, rotation,
   elastic deformations, color transforms, ...)
 - see appendix of paper for more details
