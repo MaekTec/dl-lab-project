@@ -23,7 +23,6 @@ from enum import Enum
 import torchsummary
 
 set_random_seed(0)
-writer = SummaryWriter()
 
 
 class PretrainTask(Enum):
@@ -244,6 +243,7 @@ def get_transforms(args):
 
 def main(args):
     logger = get_logger(args.logs_folder, args.exp_name)
+    writer = SummaryWriter()
 
     model, last_layer, input_dims = get_model(args)
     transform, transform_validation = get_transforms(args)

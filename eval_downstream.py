@@ -26,7 +26,6 @@ from enum import Enum
 import torchsummary
 
 set_random_seed(0)
-writer = SummaryWriter()
 
 
 def parse_arguments():
@@ -60,6 +59,7 @@ def parse_arguments():
 
 def main(args):
     logger = get_logger(args.logs_folder, args.exp_name)
+    writer = SummaryWriter()
 
     model, _, input_dims = get_model(args.args_downstream)
     _, transform_validation = get_transforms(args.args_downstream)
@@ -77,13 +77,13 @@ def main(args):
     logger.info(expdata)
     logger.info('test_data {}'.format(test_data.__len__()))
 
-    test_loss, test_acc = test(test_loader, model, criterion)
+    test_loss, test_acc = test(test_loader, model, criterion, writer)
     logger.info('Test loss: {}'.format(test_loss))
     logger.info('Test accuracy: {}'.format(test_acc))
 
 
 # test function.
-def test(loader, model, criterion):
+def test(loader, model, criterion, writer):
     total_loss = 0
     total_accuracy = 0
     total = 0

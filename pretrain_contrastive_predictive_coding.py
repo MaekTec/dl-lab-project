@@ -36,7 +36,6 @@ https://github.com/davidtellez/contrastive-predictive-coding-images
 """
 
 set_random_seed(0)
-writer = SummaryWriter()
 
 
 def parse_arguments():
@@ -75,6 +74,7 @@ def parse_arguments():
 def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
+    writer = SummaryWriter()
 
     # build model
     encoder_out_dim = 512
