@@ -46,7 +46,7 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--weight-decay', type=float, default=0.0, help='weight decay')
     parser.add_argument('--bs', type=int, default=128, help='batch_size')
-    parser.add_argument('--epochs', type=int, default=15, help='epochs')
+    parser.add_argument('--epochs', type=int, default=20, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
     parser.add_argument('--num-patches-per-dim', type=int, default=4, help='in how many patches to split the image')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
