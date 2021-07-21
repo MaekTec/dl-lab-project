@@ -115,7 +115,7 @@ def main(args):
 
         # save model
         if val_loss < best_val_loss:
-            torch.save(model.state_dict(), os.path.join(args.model_folder, f"ckpt_best_{epoch}.pth".format(epoch)))
+            torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
             best_val_loss = val_loss
 
 
