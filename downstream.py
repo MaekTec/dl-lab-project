@@ -5,6 +5,9 @@ import numpy as np
 import argparse
 import torch
 from pprint import pprint
+
+from torchvision.datasets import CIFAR10
+
 from models.contrastive_predictive_coding_network import ContrastivePredictiveCodingNetworkLinearClassification
 from training import train, validate
 from utils import check_dir, set_random_seed, get_logger, str2bool
@@ -39,7 +42,7 @@ def parse_arguments():
     parser.add_argument('data_folder', type=str, help="folder containing the data (crops)")
     parser.add_argument('pretrain_task', type=PretrainTask, choices=list(PretrainTask))
     parser.add_argument('--pretrain-path', type=str,
-                        default="Path to pretraining output folder (directory with models/, logs/")
+                        help="Path to pretraining output folder (directory with models/, logs/")
     parser.add_argument('--weight-init', type=str, default="models/ckpt_best.pth", help="weights within pretrain-path")
     # use if pretraining has specific model args
     parser.add_argument('--args-pretrain', type=str, default="args.p",
@@ -57,12 +60,15 @@ def parse_arguments():
     parser.add_argument("--resnet", type=str2bool, nargs='?',
                         const=True, default=False,
                         help="Use ResNet instead of Vit")
+    parser.add_argument("--whole-dataset", type=str2bool, nargs='?',
+                        const=True, default=False,
+                        help="If use whole CIFAR10 dataset")
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
 
     hparam_keys = ["pretrain_task", "fine_tune_last_layer", "lr_ftl", "lr_e2e", "weight_decay", "bs",
-                   "epochs", "image_size", "resnet"]
+                   "epochs", "image_size", "resnet", "whole_dataset"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
@@ -71,7 +77,7 @@ def parse_arguments():
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
-    if args.args_pretrain is not None:
+    if args.pretrain_path is not None and args.args_pretrain is not None:
         args.args_pretrain = pickle.load(open(os.path.join(args.pretrain_path, args.args_pretrain), "rb"))
 
     pickle.dump(args, open(os.path.join(args.output_folder, "args.p"), "wb"))
@@ -247,8 +253,12 @@ def main(args):
     torchsummary.summary(model, input_dims, args.bs)
 
     data_root = args.data_folder
-    train_data = CIFAR10Custom(data_root, train=True, download=True, transform=transform, unlabeled=False)
-    val_data = CIFAR10Custom(data_root, val=True, download=True, transform=transform_validation, unlabeled=False)
+    if args.whole_dataset:
+        train_data = CIFAR10(data_root, train=True, download=True, transform=transform)
+        val_data = CIFAR10(data_root, train=False, download=True, transform=transform_validation)
+    else:
+        train_data = CIFAR10Custom(data_root, train=True, download=True, transform=transform, unlabeled=False)
+        val_data = CIFAR10Custom(data_root, val=True, download=True, transform=transform_validation, unlabeled=False)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=2,
                                                pin_memory=True, drop_last=True)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.bs, shuffle=True, num_workers=2,

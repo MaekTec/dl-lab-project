@@ -113,9 +113,9 @@ def main(args):
         logger.info('Validation accuracy: {}'.format(val_acc))
 
         # save model
-        #if val_loss < best_val_loss:
-        torch.save(model.state_dict(), os.path.join(args.model_folder, f"ckpt_best_{epoch}.pth".format(epoch)))
-        #best_val_loss = val_loss
+        if val_loss < best_val_loss:
+            torch.save(model.state_dict(), os.path.join(args.model_folder, f"ckpt_best_{epoch}.pth".format(epoch)))
+            best_val_loss = val_loss
 
 
 # train one epoch over the whole training dataset.
