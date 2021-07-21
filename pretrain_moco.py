@@ -28,7 +28,7 @@ v2: https://arxiv.org/pdf/2003.04297.pdf (this, but we use the MLP head from the
   random horizontal flip, and random grayscale con-version
 - momentum = 0.999
 
-TODO: smaller queue
+Original implementation: https://github.com/facebookresearch/moco/blob/master/main_moco.py
 """
 
 set_random_seed(0)
