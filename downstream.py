@@ -122,6 +122,7 @@ def get_model(args):
         model_dict = model.state_dict()
         pretrained_dict = torch.load(os.path.join(args.pretrain_path, args.weight_init))
 
+        # don't reuse last layer parameters
         if args.resnet:
             del pretrained_dict['net.fc.weight']
             del pretrained_dict['net.fc.bias']
@@ -136,11 +137,16 @@ def get_model(args):
         pretrained_dict = torch.load(os.path.join(args.pretrain_path, args.weight_init))
 
         # change encoder to be same as in pretraining
-        encoder_dim = pretrained_dict["encoder.net.mlp_head.1.weight"].size()[0]
-        num_features = model.net.mlp_head[1].in_features
-        model.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=encoder_dim).cuda()
+        if args.resnet:
+            encoder_dim = pretrained_dict["encoder.net.fc.weight"].size()[0]
+            num_features = pretrained_dict["encoder.net.fc.weight"].size()[1]
+            model.net.fc = nn.Linear(in_features=num_features, out_features=encoder_dim).cuda()
+        else:
+            encoder_dim = pretrained_dict["encoder.net.mlp_head.1.weight"].size()[0]
+            num_features = pretrained_dict["encoder.net.mlp_head.1.weight"].size()[1]
+            model.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=encoder_dim).cuda()
 
-        # do not use last layer from pretrain
+        # # don't reuse last layer parameters
         input_dim = pretrained_dict['fc7.weight'].size()[1]
         del pretrained_dict['fc8.weight']
         del pretrained_dict['fc8.bias']
@@ -152,7 +158,7 @@ def get_model(args):
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
 
-        last_layer = model.fc8  # use last two layers, because last layer is very small
+        last_layer = model.fc8
 
         # args from pretraining
         args.number_of_permutations = args.args_pretrain.number_of_permutations
@@ -164,17 +170,18 @@ def get_model(args):
         model_dict = model.state_dict()
         pretrained_dict = torch.load(os.path.join(args.pretrain_path, args.weight_init))
 
+        # change encoder to be same as in pretraining
         if args.resnet:
-            del pretrained_dict['encoder.net.fc.weight']
-            del pretrained_dict['encoder.net.fc.bias']
-            #  TODO
+            encoder_dim = pretrained_dict["encoder.net.fc.weight"].size()[0]
+            num_features = pretrained_dict["encoder.net.fc.weight"].size()[1]
+            model.net.fc = nn.Linear(in_features=num_features, out_features=encoder_dim).cuda()
         else:
             encoder_dim = pretrained_dict["encoder.net.mlp_head.1.weight"].size()[0]
-            num_features = model.net.mlp_head[1].in_features
+            num_features = pretrained_dict["encoder.net.mlp_head.1.weight"].size()[1]
             model.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=encoder_dim).cuda()
 
         for key in list(pretrained_dict.keys()):
-            if "encoder" not in key:
+            if "encoder" not in key:  # reuse only encoder parameters
                 pretrained_dict.pop(key)
             else:
                 pretrained_dict[key.replace("encoder.", "")] = pretrained_dict.pop(key)
@@ -194,6 +201,7 @@ def get_model(args):
         model_dict = model.state_dict()
         pretrained_dict = torch.load(os.path.join(args.pretrain_path, args.weight_init))
 
+        # don't reuse last layer parameters
         if args.resnet:
             del pretrained_dict['f_q.net.fc.weight']
             del pretrained_dict['f_q.net.fc.bias']
@@ -202,7 +210,7 @@ def get_model(args):
             del pretrained_dict['f_q.net.mlp_head.1.bias']
 
         for key in list(pretrained_dict.keys()):
-            if "f_q" not in key:
+            if "f_q" not in key:  # throw f_k (momentum encoder) away
                 pretrained_dict.pop(key)
             else:
                 pretrained_dict[key.replace("f_q.", "")] = pretrained_dict.pop(key)
