@@ -8,3 +8,5 @@ import pretrain_jigsaw_puzzle
 import pretrain_moco
 import pretrain_rotation
 import training
+
+print("test")
