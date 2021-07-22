@@ -1,14 +1,14 @@
 # same as in run.ipynb
 
 # Pretraining
-#python3 pretrain_rotation.py dataset
-#python3 pretrain_jigsaw_puzzle.py dataset
-#python3 pretrain_contrastive_predictive_coding.py dataset
-#python3 pretrain_moco.py dataset
+python3 pretrain_rotation.py dataset
+python3 pretrain_jigsaw_puzzle.py dataset
+python3 pretrain_contrastive_predictive_coding.py dataset
+python3 pretrain_moco.py dataset
 # Downstream with random weights
-#python3 downstream.py --fine-tune-last-layer True dataset none
-#python3 downstream.py dataset none
-#python3 downstream.py --whole-dataset True dataset none
+python3 downstream.py --fine-tune-last-layer True dataset none
+python3 downstream.py dataset none
+python3 downstream.py --whole-dataset True dataset none
 # Downstream with weights from pretraining
 python3 downstream.py --pretrain-path results/pretrain_rotation/lr0.0002_weight_decay0.0_bs256_epochs20_image_size64_resnetFalse_ --fine-tune-last-layer True dataset rotation
 python3 downstream.py --pretrain-path results/pretrain_rotation/lr0.0002_weight_decay0.0_bs256_epochs20_image_size64_resnetFalse_ dataset rotation
