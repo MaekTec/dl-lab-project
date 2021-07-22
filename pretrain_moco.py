@@ -105,8 +105,8 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
-        val_loss, val_acc = validate(val_loader, model, criterion, epoch)
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch, writer)
+        val_loss, val_acc = validate(val_loader, model, criterion, epoch, writer)
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
@@ -120,7 +120,7 @@ def main(args):
 
 
 # train one epoch over the whole training dataset.
-def train(loader, model, criterion, optimizer, scheduler, epoch):
+def train(loader, model, criterion, optimizer, scheduler, epoch, writer):
     total_loss = 0
     total_accuracy = 0
     total = 0
@@ -149,7 +149,7 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
 
 
 # validation function.
-def validate(loader, model, criterion, epoch):
+def validate(loader, model, criterion, epoch, writer):
     total_loss = 0
     total_accuracy = 0
     total = 0
