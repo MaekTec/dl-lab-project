@@ -262,7 +262,7 @@ def get_transforms_pretraining_contrastive_predictive_coding(args):
     train_transform = Compose([
         ToTensor(),
         Resize(int(args.image_size + ((args.num_patches_per_dim-1) * int(args.image_size/2)))),  # 160 for 4x4 grid
-        DivideInGrid(args.image_size, int(args.image_size/2)),  # 4x4 grid
+        DivideInGrid(args.image_size, int(args.image_size/2)),  # 4x4 grid with 50% overlap
         ApplyOnList(ToPILImage()),
         ApplyOnList(AutoAugment(AutoAugmentPolicy.CIFAR10)),
         ApplyOnList(AutoAugment(AutoAugmentPolicy.CIFAR10)),

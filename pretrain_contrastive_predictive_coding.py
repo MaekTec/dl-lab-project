@@ -1,4 +1,6 @@
 import os
+import pickle
+
 import numpy as np
 import argparse
 import torch
@@ -16,30 +18,24 @@ from models.context_free_network import ContextFreeNetwork
 from tqdm import tqdm
 
 """
-https://arxiv.org/pdf/1905.09272.pdf (cpc v2)
+Papers: https://arxiv.org/pdf/1905.09272.pdf (cpc v2), https://arxiv.org/pdf/1807.03748.pdf (original cpc)
 in paper they use the following schema:
 - predict from top to down and vise-versa
-- 80x80 pixel patches with 36 pixel stride
-- resize the image to 300×300 pixels and randomly ex-tract a 260×260 pixel crop,
-  then divide this image into a 6×6 grid of 80×80 patches
-- predict from left to right and vise-versa
-- data augmentations (randomly drop 2 of 3 color channels, shearing, rotation, elastic deformations, color transforms, ...)
+- resize the image to 300×300 pixels and randomly extract a 260*260 pixel crop,
+  then divide this image into a 6*6 grid of 80*80 patches with 36 pixel stride
+- data augmentations (randomly drop 2 of 3 color channels, shearing, rotation,
+  elastic deformations, color transforms, ...)
+- see appendix of paper for more details
 
 This implementation is slightly different from above, due to the smaller image size 
 and not all data augmentation are public available.
 
-TODO:
-- mean pool?
-
 Helpful implementations:
 https://github.com/SeonghoBaek/CPC/blob/master/cpc.py
 https://github.com/davidtellez/contrastive-predictive-coding-images
-
-https://arxiv.org/pdf/1807.03748.pdf (original cpc)
 """
 
 set_random_seed(0)
-writer = SummaryWriter()
 
 
 def parse_arguments():
@@ -49,7 +45,7 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--weight-decay', type=float, default=0.0, help='weight decay')
     parser.add_argument('--bs', type=int, default=128, help='batch_size')
-    parser.add_argument('--epochs', type=int, default=15, help='epochs')
+    parser.add_argument('--epochs', type=int, default=20, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
     parser.add_argument('--num-patches-per-dim', type=int, default=4, help='in how many patches to split the image')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
@@ -70,12 +66,15 @@ def parse_arguments():
 
     args.splits = args.num_patches_per_dim**2
 
+    pickle.dump(args, open(os.path.join(args.output_folder, "args.p"), "wb"))
+
     return args
 
 
 def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
+    writer = SummaryWriter()
 
     # build model
     encoder_out_dim = 512
@@ -87,7 +86,8 @@ def main(args):
     model = ContrastivePredictiveCodingNetwork(encoder, encoder_out_dim, args.num_patches_per_dim).cuda()
 
     logger.info(model)
-    #torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
+    # doesn't work due to tuple output of model (loss, acc)
+    # torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
 
     # load dataset
     data_root = args.data_folder
@@ -111,8 +111,8 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, optimizer, scheduler, epoch)
-        val_loss, val_acc = validate(val_loader, model, epoch)
+        train_loss, train_acc = train(train_loader, model, optimizer, scheduler, epoch, writer)
+        val_loss, val_acc = validate(val_loader, model, epoch, writer)
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
@@ -126,7 +126,7 @@ def main(args):
 
 
 # train one epoch over the whole training dataset.
-def train(loader, model, optimizer, scheduler, epoch):
+def train(loader, model, optimizer, scheduler, epoch, writer):
     total_loss = 0
     total_accuracy = 0
     total = 0
@@ -148,15 +148,13 @@ def train(loader, model, optimizer, scheduler, epoch):
 
     mean_train_loss = total_loss / total
     mean_train_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/train'] = mean_train_loss
-    scalar_dict['Accuracy/train'] = mean_train_accuracy
+    scalar_dict = {'Loss/train': mean_train_loss, 'Accuracy/train': mean_train_accuracy}
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
     return mean_train_loss, mean_train_accuracy
 
 
 # validation function.
-def validate(loader, model, epoch):
+def validate(loader, model, epoch, writer):
     total_loss = 0
     total_accuracy = 0
     total = 0
@@ -175,9 +173,7 @@ def validate(loader, model, epoch):
 
     mean_val_loss = total_loss / total
     mean_val_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/val'] = mean_val_loss
-    scalar_dict['Accuracy/val'] = mean_val_accuracy
+    scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
 
     return mean_val_loss, mean_val_accuracy

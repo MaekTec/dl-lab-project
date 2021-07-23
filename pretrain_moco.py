@@ -1,4 +1,6 @@
 import os
+import pickle
+
 import numpy as np
 import argparse
 import torch
@@ -22,15 +24,14 @@ v2: https://arxiv.org/pdf/2003.04297.pdf (this, but we use the MLP head from the
     - a query matches a key if they are encoded views (e.g., different crops) of the same image
 - InfoNCE
 - encoder output normalized with L2-norm, batch normalization?
-- 224×224-pixel  crop  is  taken  from  a  randomly resized image, and then undergoes random color jittering,
+- 224*224-pixel  crop  is  taken  from  a  randomly resized image, and then undergoes random color jittering,
   random horizontal flip, and random grayscale con-version
 - momentum = 0.999
 
-TODO: smaller queue
+Original implementation: https://github.com/facebookresearch/moco/blob/master/main_moco.py
 """
 
 set_random_seed(0)
-writer = SummaryWriter()
 
 
 def parse_arguments():
@@ -40,7 +41,7 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--weight-decay', type=float, default=0.0, help='weight decay')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
-    parser.add_argument('--epochs', type=int, default=60, help='epochs')
+    parser.add_argument('--epochs', type=int, default=30, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
                         const=True, default=False,
@@ -58,12 +59,15 @@ def parse_arguments():
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
+    pickle.dump(args, open(os.path.join(args.output_folder, "args.p"), "wb"))
+
     return args
 
 
 def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
+    writer = SummaryWriter()
 
     # build model
     encoder_out_dim = 512
@@ -75,7 +79,8 @@ def main(args):
     model = MoCoNetwork(encoder, encoder_out_dim).cuda()
 
     logger.info(model)
-    #torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
+    # doesn't work due to tuple output of model (outputs, labels)
+    # torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
 
     # load dataset
     data_root = args.data_folder
@@ -100,8 +105,8 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
-        val_loss, val_acc = validate(val_loader, model, criterion, epoch)
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch, writer)
+        val_loss, val_acc = validate(val_loader, model, criterion, epoch, writer)
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
@@ -109,13 +114,13 @@ def main(args):
         logger.info('Validation accuracy: {}'.format(val_acc))
 
         # save model
-        #if val_loss < best_val_loss:
-        torch.save(model.state_dict(), os.path.join(args.model_folder, f"ckpt_best_{epoch}.pth".format(epoch)))
-        #best_val_loss = val_loss
+        if val_loss < best_val_loss:
+            torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
+            best_val_loss = val_loss
 
 
 # train one epoch over the whole training dataset.
-def train(loader, model, criterion, optimizer, scheduler, epoch):
+def train(loader, model, criterion, optimizer, scheduler, epoch, writer):
     total_loss = 0
     total_accuracy = 0
     total = 0
@@ -138,15 +143,13 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
 
     mean_train_loss = total_loss / total
     mean_train_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/train'] = mean_train_loss
-    scalar_dict['Accuracy/train'] = mean_train_accuracy
+    scalar_dict = {'Loss/train': mean_train_loss, 'Accuracy/train': mean_train_accuracy}
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
     return mean_train_loss, mean_train_accuracy
 
 
 # validation function.
-def validate(loader, model, criterion, epoch):
+def validate(loader, model, criterion, epoch, writer):
     total_loss = 0
     total_accuracy = 0
     total = 0
@@ -163,9 +166,7 @@ def validate(loader, model, criterion, epoch):
 
     mean_val_loss = total_loss / total
     mean_val_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/val'] = mean_val_loss
-    scalar_dict['Accuracy/val'] = mean_val_accuracy
+    scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
 
     return mean_val_loss, mean_val_accuracy
