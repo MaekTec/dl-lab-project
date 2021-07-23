@@ -62,6 +62,7 @@ def main(args):
     writer = SummaryWriter()
 
     model, _, input_dims = get_model(args.args_downstream)
+    model.load_state_dict(torch.load(os.path.join(args.downstream_path, args.weight_init)))
     _, transform_validation = get_transforms(args.args_downstream)
 
     logger.info(model)

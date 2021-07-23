@@ -8,3 +8,5 @@ chmod +x run_all.sh
 ./run_all.sh &> run_all_log.txt &
 disown -h # or -a
 # 30536
+# 2055
+zip -r dl-lab-project-glcoud.zip dl-lab-project
