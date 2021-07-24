@@ -35,3 +35,43 @@ class ResNet18Backbone(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
+
+class CMC_ViT_Backbone(nn.Module):
+    def __init__(self, image_size=32, patch_size=4, num_classes=10):
+        super().__init__()
+
+        self.net_l = ViT(
+            image_size=image_size,
+            patch_size=patch_size,
+            num_classes=num_classes,
+            dim=1024,
+            depth=5,
+            heads=6,
+            mlp_dim=1024,
+            dropout=0.1,
+            emb_dropout=0.1,
+            channels=1
+        )
+        self.net_ab = ViT(
+            image_size=image_size,
+            patch_size=patch_size,
+            num_classes=num_classes,
+            dim=1024,
+            depth=5,
+            heads=6,
+            mlp_dim=1024,
+            dropout=0.1,
+            emb_dropout=0.1,
+            channels=2
+        )
+
+    def forward(self, x):
+        l, ab = torch.split(x, [1, 2], dim=1)
+        print('x.shape=',x.shape,'l.shape=', l.shape,'ab.shape=', ab.shape)
+
+        feat_l = self.net_l(l)
+        feat_ab = self.net_ab(ab)
+
+        return feat_l, feat_ab
+

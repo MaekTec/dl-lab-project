@@ -18,10 +18,12 @@ class CIFAR10Custom(torchvision.datasets.CIFAR10):
             target_transform: Optional[Callable] = None,
             download: bool = False,
             unlabeled: bool = True,
-            valset_percentage_of_trainset = 0.1
+            valset_percentage_of_trainset = 0.1,
+            pretrain_task = None
     ) -> None:
         super(CIFAR10Custom, self).__init__(root, not test, transform, target_transform, download)
         self.unlabeled = unlabeled
+        self.pretrain_task = pretrain_task
 
         assert sum([train, val, test]) == 1  # only one can be active
         assert any([train, val, test])  # at least one hast to active
@@ -75,7 +77,8 @@ class CIFAR10Custom(torchvision.datasets.CIFAR10):
             if self.transform is not None:
                 img = self.transform(img)
 
-            return img
+            if self.pretrain_task == 'cmc':
+                return img, index
         else:
             img, target = self.data[index], self.targets[index]
 
@@ -88,5 +91,8 @@ class CIFAR10Custom(torchvision.datasets.CIFAR10):
 
             if self.target_transform is not None:
                 target = self.target_transform(target)
+
+            if self.pretrain_task == 'cmc':
+                return img, target , index
 
             return img, target

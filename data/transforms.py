@@ -10,7 +10,15 @@ from torch.utils.data._utils.collate import default_collate
 import itertools
 import math
 from PIL import ImageFilter
+from skimage import color
 
+
+class RGB2Lab(object):
+    """Convert RGB PIL image to ndarray Lab."""
+    def __call__(self, img):
+        img = np.asarray(img, np.uint8)
+        img = color.rgb2lab(img)
+        return img
 
 def custom_collate(batch):
     img, label = default_collate(batch)
@@ -39,6 +47,7 @@ class ImgRotation:
         labels = list(range(len(self.angles)))
         assert len(rotated_imgs) == len(labels)
         return rotated_imgs, labels
+
 
 
 class DivideInTiles:
@@ -303,6 +312,20 @@ def get_transforms_pretraining_moco(args):
     train_transform = TwoCropsTransform(transform_each_crop)
     return train_transform
 
+def get_transforms_pretraining_cmc(args):
+
+    color_transfer = RGB2Lab()
+    train_transform = transforms.Compose([
+        transforms.RandomResizedCrop(args.image_size,),
+        transforms.RandomHorizontalFlip(),
+        color_transfer,
+        transforms.ToTensor(),
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
+    ])
+
+    return train_transform
+
+
 
 def get_transforms_downstream_jigsaw_puzzle_training(args):
     train_transform = Compose([
@@ -339,6 +362,7 @@ def get_transforms_downstream_contrastive_predictive_coding_validation(args):
         CollateList()
     ])
     return val_transform
+
 
 
 def get_transforms_downstream_training(args):
