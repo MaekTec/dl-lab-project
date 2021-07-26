@@ -158,13 +158,16 @@ def validate(loader, model, criterion, epoch):
     total = 0
     model.eval()
     with torch.no_grad():
-        for i, inputs in tqdm(enumerate(loader)):
-            inputs = [i.cuda() for i in inputs]
-            outputs, labels = model(inputs)
-
-            batch_size = labels.size(0)
-            total_loss += criterion(outputs, labels).item() * batch_size
-            total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
+        for i, (inputs, index) in enumerate(loader):
+            print("i=",i)
+            #if ((i+1) % 30) == 0:
+            #    break
+            inputs = inputs.to(device, dtype=torch.float32)
+            output_l, output_ab = model(inputs)
+            loss = criterion(output_l, output_ab)
+            batch_size = inputs.size(0)
+            total_loss += loss.item() * batch_size
+            #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
             total += batch_size
 
     mean_val_loss = total_loss / total
