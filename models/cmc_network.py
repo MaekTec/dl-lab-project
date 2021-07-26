@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
 
 class CMCLinearClassifier(nn.Module):
     def __init__(self, model, encoder_dim):
@@ -11,7 +13,7 @@ class CMCLinearClassifier(nn.Module):
     def forward(self, x):
         output_l, output_ab = self.transformer(x)
         output = torch.cat((output_l.detach(),output_ab.detach()),dim=1)
-        output = nn.ReLU(self.fc1(output))
+        output = F.relu(self.fc1(output))
         output = self.fc2(output)
         return output
 
