@@ -1,3 +1,5 @@
+# https://medium.com/analytics-vidhya/understanding-simclr-a-simple-framework-for-contrastive-learning-of-visual-representations-d544a9003f3c
+
 import os
 import numpy as np
 import argparse
@@ -125,6 +127,7 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
     total_accuracy = 0
     total = 0
     model.train()
+    epoch_losses_train = []
     for i, (inputs, index) in enumerate(loader):
         print("i=",i)
         #if ((i+1) % 30) == 0:
@@ -133,6 +136,7 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
         optimizer.zero_grad()
         output_l, output_ab = model(inputs)
         loss = criterion(output_l, output_ab)
+        epoch_losses_train.append(loss.cpu().data.item())
         loss.backward()
         optimizer.step()
 
@@ -143,6 +147,7 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
     scheduler.step()
 
     mean_train_loss = total_loss / total
+    mean_train_loss = sum(epoch_losses_train)/len(epoch_losses_train)
     mean_train_accuracy = total_accuracy / total
     scalar_dict = {}
     scalar_dict['Loss/train'] = mean_train_loss
