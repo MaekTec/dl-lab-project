@@ -128,8 +128,8 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
     total = 0
     model.train()
     epoch_losses_train = []
-    for i, (inputs, index) in enumerate(loader):
-        print("i=",i)
+    for i, (inputs, index) in tqdm(enumerate(loader)):
+        #print("i=",i)
         #if ((i+1) % 30) == 0:
         #    break
         inputs = inputs.to(device, dtype=torch.float32)
@@ -162,20 +162,24 @@ def validate(loader, model, criterion, epoch):
     total_accuracy = 0
     total = 0
     model.eval()
+    epoch_losses_val = []
+
     with torch.no_grad():
-        for i, (inputs, index) in enumerate(loader):
-            print("i=",i)
+        for i, (inputs, index) in tqdm(enumerate(loader)):
+            #print("i=",i)
             #if ((i+1) % 30) == 0:
             #    break
             inputs = inputs.to(device, dtype=torch.float32)
             output_l, output_ab = model(inputs)
             loss = criterion(output_l, output_ab)
+            epoch_losses_val.append(loss.cpu().data.item())
             batch_size = inputs.size(0)
             total_loss += loss.item() * batch_size
             #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
             total += batch_size
 
     mean_val_loss = total_loss / total
+    mean_val_loss = sum(epoch_losses_val)/len(epoch_losses_val)
     mean_val_accuracy = total_accuracy / total
     scalar_dict = {}
     scalar_dict['Loss/val'] = mean_val_loss
