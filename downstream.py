@@ -5,9 +5,10 @@ import torch
 from pprint import pprint
 
 from PatchPredictionNetwork import PatchPredictionNetwork, PatchPredictionLoss
+from models.cmc_network import CMCLinearClassifier
 from models.contrastive_predictive_coding_network import ContrastivePredictiveCodingNetworkLinearClassification
 from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log, str2bool
-from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
+from models.pretraining_backbone import ViTBackbone, ResNet18Backbone, CMC_ViT_Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torch.nn as nn
@@ -17,7 +18,8 @@ from models.context_free_network import ContextFreeNetwork
 from data.transforms import get_transforms_downstream_training, \
     get_transforms_downstream_validation, get_transforms_pretraining_contrastive_predictive_coding, \
     get_transforms_downstream_contrastive_predictive_coding_validation, get_transforms_pretraining_jigsaw_puzzle, \
-    get_transforms_downstream_jigsaw_puzzle_validation, get_transforms_downstream_jigsaw_puzzle_training, get_transforms_pretraining_mpp
+    get_transforms_downstream_jigsaw_puzzle_validation, get_transforms_downstream_jigsaw_puzzle_training, get_transforms_pretraining_mpp \
+    , get_transforms_pretraining_cmc
 from tqdm import tqdm
 from enum import Enum
 import torchsummary
@@ -33,6 +35,7 @@ class PretrainTask(Enum):
     cpc = 'cpc'
     moco = 'moco'
     patch_prediction = 'patch_prediction'
+    cmc = 'cmc'
 
     def __str__(self):
         return self.value
@@ -243,6 +246,30 @@ def main(args):
         transform = get_transforms_pretraining_mpp()
         transform_validation = get_transforms_pretraining_mpp()
 
+    elif  args.pretrain_task is PretrainTask.cmc:
+        #xxx
+        encoder_dim=128
+        model = CMC_ViT_Backbone(image_size=args.image_size, patch_size=16, num_classes=encoder_dim).cuda()
+
+        print(model)
+        model_dict = model.state_dict()
+        pretrained_dict = torch.load(args.weight_init)
+
+        if args.resnet:
+            # TODO
+            pass
+        else:
+            del pretrained_dict['net_l.mlp_head.1.weight']
+            del pretrained_dict['net_l.mlp_head.1.bias']
+            del pretrained_dict['net_ab.mlp_head.1.weight']
+            del pretrained_dict['net_ab.mlp_head.1.bias']
+
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
+        model = CMCLinearClassifier(model,encoder_dim).cuda()
+
+        transform = get_transforms_pretraining_cmc(args)
+        transform_validation = get_transforms_pretraining_cmc(args)
 
     else:
         raise ValueError
@@ -257,6 +284,7 @@ def main(args):
     #torchsummary.summary(model, input_dims, args.bs)
 
     data_root = args.data_folder
+
     train_data = CIFAR10Custom(data_root, train=True, download=True, transform=transform, unlabeled=False)
     val_data = CIFAR10Custom(data_root, val=True, download=True, transform=transform_validation, unlabeled=False)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.bs, shuffle=True, num_workers=2,
@@ -299,7 +327,7 @@ def train(loader, model, criterion, optimizer, scheduler, epoch, args):
     total = 0
     model.train()
     for i, (inputs,labels) in tqdm(enumerate(loader)):
-        inputs = inputs.cuda()
+        inputs = inputs.cuda().to(dtype=torch.float32)
         labels = labels.cuda()
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -330,7 +358,7 @@ def validate(loader, model, criterion, epoch, args):
     model.eval()
     with torch.no_grad():
         for i, (inputs, labels) in tqdm(enumerate(loader)):
-            inputs = inputs.cuda()
+            inputs = inputs.cuda().to(dtype=torch.float32)
             labels = labels.cuda()
             outputs = model(inputs)
 
