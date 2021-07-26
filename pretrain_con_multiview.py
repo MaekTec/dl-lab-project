@@ -36,6 +36,8 @@ def parse_arguments():
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     parser.add_argument('--feat_dim', type=int, default=128, help='dim of feat for inner product')
+    parser.add_argument('--nce_k', type=int, default=16384)
+
     args = parser.parse_args()
 
     hparam_keys = ["lr", "weight_decay", "bs", "epochs", "image_size", "resnet"]
@@ -89,9 +91,9 @@ def main(args):
     #     print('feat_l.shape=',feat_l.shape, 'feat_ab.shape',feat_ab.shape)
     #     break
 
-    #contrast = NCEAverage(args.feat_dim, n_data, args.nce_k, 0.07, 0.5, True)
-    #criterion_l = NCESoftmaxLoss()
-    #criterion_ab = NCESoftmaxLoss()
+    contrast = NCEAverage(args.feat_dim, train_data.__len__(), args.nce_k, 0.07, 0.5, True).cuda()
+    criterion_l = NCESoftmaxLoss().cuda()
+    criterion_ab = NCESoftmaxLoss().cuda()
 
     criterion = ContLoss()
 
@@ -107,7 +109,8 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
+        #train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
+        train_loss, train_acc = train2(train_loader, model, criterion_l,criterion_ab, optimizer, scheduler, epoch,contrast)
         val_loss, val_acc = validate(val_loader, model, criterion, epoch)
 
         logger.info('Training loss: {}'.format(train_loss))
@@ -116,9 +119,54 @@ def main(args):
         logger.info('Validation accuracy: {}'.format(val_acc))
 
         # save model
-        #if val_loss < best_val_loss:
-        torch.save(model.state_dict(), os.path.join(args.model_folder, f"ckpt_best_{epoch}.pth".format(epoch)))
-        #best_val_loss = val_loss
+        if val_loss < best_val_loss:
+            torch.save(model.state_dict(), os.path.join(args.model_folder, f"ckpt_best_{epoch}.pth".format(epoch)))
+            print('model saved..')
+            best_val_loss = val_loss
+
+# train one epoch over the whole training dataset.
+def train2(loader, model, criterion_l,criterion_ab, optimizer, scheduler, epoch, contrast):
+    #loss function used in paper
+    total_loss = 0
+    total_accuracy = 0
+    total = 0
+    model.train()
+    epoch_losses_train = []
+    for i, (inputs, index) in tqdm(enumerate(loader)):
+        #print("i=",i)
+        #if ((i+1) % 30) == 0:
+        #    break
+        inputs = inputs.to(device, dtype=torch.float32)
+        index = index.to(device)
+        optimizer.zero_grad()
+        output_l, output_ab = model(inputs)
+        out_l, out_ab = contrast(output_l,output_ab,index)
+
+        loss_l = criterion_l(out_l)
+        loss_ab = criterion_ab(out_ab)
+
+        loss = loss_l + loss_ab
+
+
+        epoch_losses_train.append(loss.cpu().data.item())
+        loss.backward()
+        optimizer.step()
+
+        batch_size = inputs.size(0)
+        total_loss += loss.item() * batch_size
+        #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
+        total += batch_size
+    scheduler.step()
+
+    mean_train_loss = total_loss / total
+    mean_train_loss = sum(epoch_losses_train)/len(epoch_losses_train)
+    mean_train_accuracy = total_accuracy / total
+    scalar_dict = {}
+    scalar_dict['Loss/train'] = mean_train_loss
+    scalar_dict['Accuracy/train'] = mean_train_accuracy
+    save_in_log(writer, epoch, scalar_dict=scalar_dict)
+    return mean_train_loss, mean_train_accuracy
+
 
 
 # train one epoch over the whole training dataset.
