@@ -147,6 +147,10 @@ def train2(loader, model, criterion_l,criterion_ab, optimizer, scheduler, epoch,
 
         loss = loss_l + loss_ab
 
+        l_prob = out_l[:, 0].mean()
+        ab_prob = out_ab[:, 0].mean()
+
+
 
         epoch_losses_train.append(loss.cpu().data.item())
         loss.backward()
