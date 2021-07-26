@@ -68,7 +68,7 @@ class CMC_ViT_Backbone(nn.Module):
 
     def forward(self, x):
         l, ab = torch.split(x, [1, 2], dim=1)
-        print('x.shape=',x.shape,'l.shape=', l.shape,'ab.shape=', ab.shape)
+        #print('x.shape=',x.shape,'l.shape=', l.shape,'ab.shape=', ab.shape)
 
         feat_l = self.net_l(l)
         feat_ab = self.net_ab(ab)

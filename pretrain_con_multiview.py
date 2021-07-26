@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
 from tqdm import tqdm
-
+from cmc_criterions import NCEAverage, NCESoftmaxLoss, ContLoss
 
 
 set_random_seed(0)
@@ -33,6 +33,7 @@ def parse_arguments():
                         help="Use ResNet instead of Vit")
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
+    parser.add_argument('--feat_dim', type=int, default=128, help='dim of feat for inner product')
     args = parser.parse_args()
 
     hparam_keys = ["lr", "weight_decay", "bs", "epochs", "image_size", "resnet"]
@@ -76,13 +77,23 @@ def main(args):
                                              pin_memory=True, drop_last=False)
 
 
-    for i, (input, index) in enumerate(train_loader):
-        input = input.to(device, dtype=torch.float32)
-        y = model(input)
-        print(y)
-    return
+    # for i, (input, index) in enumerate(train_loader):
+    #     print('input.shape',input.shape)
+    #     print('index.shape',index.shape)
+    #     input = input.to(device, dtype=torch.float32)
+    #     feat_l, feat_ab = model(input)
+    #     #loss = loss_function(feat_l, feat_ab)
+    #     #print('loss=',loss.item())
+    #     print('feat_l.shape=',feat_l.shape, 'feat_ab.shape',feat_ab.shape)
+    #     break
 
-    criterion = torch.nn.CrossEntropyLoss() #TODO
+    #contrast = NCEAverage(args.feat_dim, n_data, args.nce_k, 0.07, 0.5, True)
+    #criterion_l = NCESoftmaxLoss()
+    #criterion_ab = NCESoftmaxLoss()
+
+    criterion = ContLoss()
+
+    #criterion = torch.nn.CrossEntropyLoss() #TODO
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
@@ -114,19 +125,20 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
     total_accuracy = 0
     total = 0
     model.train()
-    for i, inputs in tqdm(enumerate(loader)):
+    for i, (inputs, index) in enumerate(loader):
+        print("i=",i)
         #if ((i+1) % 30) == 0:
         #    break
-        inputs = [i.cuda() for i in inputs]
+        inputs = inputs.to(device, dtype=torch.float32)
         optimizer.zero_grad()
-        outputs, labels = model(inputs)
-        loss = criterion(outputs, labels)
+        output_l, output_ab = model(inputs)
+        loss = criterion(output_l, output_ab)
         loss.backward()
         optimizer.step()
 
-        batch_size = labels.size(0)
-        total_loss += criterion(outputs, labels).item() * batch_size
-        total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
+        batch_size = inputs.size(0)
+        total_loss += loss.item() * batch_size
+        #total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
         total += batch_size
     scheduler.step()
 
