@@ -3,14 +3,12 @@ import numpy as np
 import argparse
 import torch
 from pprint import pprint
-from data.transforms import get_transforms_pretraining_rotation, custom_collate, get_transforms_pretraining_mpp
-from utils import check_dir, set_random_seed, accuracy, get_logger, accuracy, save_in_log, str2bool
-from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
+from data.transforms import get_transforms_pretraining_mpp
+from utils import check_dir, set_random_seed, get_logger, save_in_log, str2bool
+from models.pretraining_backbone import ViTBackbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
-import torchsummary
-from PatchPredictionNetwork import PatchPredictionLoss,PatchPredictionNetwork
-from torchvision.transforms import transforms
+from models.patch_prediction_network import PatchPredictionLoss,PatchPredictionNetwork
 
 # https://arxiv.org/pdf/1803.07728.pdf
 
