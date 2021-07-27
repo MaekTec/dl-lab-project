@@ -33,7 +33,7 @@ class ContLoss(nn.Module):
         neglog_num_by_den = -torch.log(num_by_den)
         return torch.mean(neglog_num_by_den)
 
-
+'''
 class NCEAverage(nn.Module):
 
     def __init__(self, inputSize, outputSize, K, T=0.07, momentum=0.5, use_softmax=False):
@@ -113,7 +113,9 @@ class NCEAverage(nn.Module):
             self.memory_ab.index_copy_(0, y, updated_ab)
 
         return out_l, out_ab
+'''
 
+'''
 class NCESoftmaxLoss(nn.Module):
     """Softmax cross-entropy loss (a.k.a., info-NCE loss in CPC paper)"""
     def __init__(self):
@@ -126,3 +128,4 @@ class NCESoftmaxLoss(nn.Module):
         label = torch.zeros([bsz]).cuda().long()
         loss = self.criterion(x, label)
         return loss
+'''
