@@ -3,6 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils import accuracy
 
+"""
+This implementation is very similar to the pseudo code in the appendix of the paper.
+"""
+
 
 class PixelCNN(nn.Module):
 
@@ -12,8 +16,10 @@ class PixelCNN(nn.Module):
         self.layers = nn.ModuleList()
         for _ in range(num_layers):
             conv1 = nn.Conv2d(in_channels, out_channels=autoregressive_dim, kernel_size=(1, 1))
-            conv2 = nn.Conv2d(autoregressive_dim, out_channels=autoregressive_dim, kernel_size=(1, 3), padding=(0, 1))  # same
-            conv3 = nn.Conv2d(autoregressive_dim, out_channels=autoregressive_dim, kernel_size=(2, 1))  # valid
+            # same convolution
+            conv2 = nn.Conv2d(autoregressive_dim, out_channels=autoregressive_dim, kernel_size=(1, 3), padding=(0, 1))
+            # valid convolution
+            conv3 = nn.Conv2d(autoregressive_dim, out_channels=autoregressive_dim, kernel_size=(2, 1))
             conv4 = nn.Conv2d(autoregressive_dim, out_channels=in_channels, kernel_size=(1, 1))
             self.layers.append(nn.ModuleList([conv1, conv2, conv3, conv4]))
 
@@ -23,7 +29,7 @@ class PixelCNN(nn.Module):
         for layer in self.layers:
             c = F.relu(layer[0](cres))
             c = layer[1](c)
-            c = F.pad(c, (0, 0, 1, 0, 0, 0))  # pad 1 on top of "image" (this corresponds to mask conv)
+            c = F.pad(c, (0, 0, 1, 0, 0, 0))  # pad 1 on top of the "image" (this corresponds to mask conv)
             c = F.relu(layer[2](c))
             c = layer[3](c)
             cres = cres + c
@@ -33,11 +39,15 @@ class PixelCNN(nn.Module):
 
 class ContrastivePredictiveCodingNetwork(nn.Module):
 
+    """
+    steps_to_ignore=1, because overlap between patches is 50% as the default
+    """
+
     def __init__(self, encoder, encoder_dim, num_patches_per_dim, autoregressive_dim=256, target_dim=64, emb_scale=0.1,
                  steps_to_ignore=1, steps_to_predict=3):
         super().__init__()
         self.encoder = encoder
-        self.pixel_cnn = PixelCNN(encoder_dim, num_patches_per_dim-1, autoregressive_dim)  # TODO: correct?
+        self.pixel_cnn = PixelCNN(encoder_dim, num_patches_per_dim-1, autoregressive_dim)
         self.num_patches_per_dim = num_patches_per_dim
         self.target_dim = target_dim
         self.emb_scale = emb_scale
@@ -51,29 +61,39 @@ class ContrastivePredictiveCodingNetwork(nn.Module):
         self.cross_entropy = nn.CrossEntropyLoss()
 
     def forward(self, x):
-        # x has shape (N, L, 1, HI, WI), L=7*7 in default setting and HI=WI=64 (original CPC)
+        # x has shape (N, L, 1, HI, WI), L=7*7 (number of patches) in default setting and HI=WI=64 (original CPC)
         seq_length = x.size()[1]
+        # encode each patch
         latents = torch.stack([self.encoder(x[:, i, ...]) for i in range(seq_length)], dim=1)  # (N, L, DE)
-        latents = torch.reshape(latents, (x.size()[0], self.num_patches_per_dim, self.num_patches_per_dim, latents.size()[2]))  # (N, HL, WL, DE)
+        # reshape to have a grid of encoded patches, HL=WL=7, DE is encoder output dim
+        latents = torch.reshape(latents, (x.size()[0], self.num_patches_per_dim, self.num_patches_per_dim,
+                                          latents.size()[2]))  # (N, HL, WL, DE)
         latents = latents.permute(0, 3, 1, 2)  # (N, DE, HL, WL)
 
         total_loss = 0.0
         total_accuracy = 0
         total = 0
         context = self.pixel_cnn(latents)  # (N, DE, HL, WL)
-        targets = self.conv_targets(latents)  # (N, DT , HL, WL)
+        # 1x1 conv corresponds to a linear layer for the targets
+        targets = self.conv_targets(latents)  # (N, DT , HL, WL), DT is target_dim
         batch_dim, _, col_dim, rows = targets.size()
         targets = torch.reshape(targets.permute(0, 2, 3, 1), (-1, self.target_dim))  # (N*HL*WL, DT)
         for i in range(self.steps_to_ignore, self.steps_to_predict):
-            col_dim_i = col_dim - i - 1
-            total_elements = batch_dim * col_dim_i * rows
+            col_dim_i = col_dim - i - 1  # column dim of predictions
+            total_elements = batch_dim * col_dim_i * rows  # number of predictions
+            # 1x1 conv corresponds to a linear layer for the predictions (W_k in paper)
             preds_i = self.conv_preds[i-self.steps_to_ignore](context)  # (N, DT, HL, WL)
+            # crop predictions to predict only existing future latents
             preds_i = preds_i[:, :, :-(i+1), :] * self.emb_scale   # (N, DP, HLC, WLC)
             preds_i = torch.reshape(preds_i.permute(0, 2, 3, 1), (-1, self.target_dim))  # (N*HLC*WLC, DP)
+            # calculate dot product between predictions and targets
             logits = torch.matmul(preds_i, targets.T)  # (N*HLC*WLC, N*HL*WL)
 
+            # batch index for each prediction
             b = torch.div(torch.arange(total_elements), (col_dim_i * rows), rounding_mode='trunc')
+            # column index for each prediction
             col = torch.arange(total_elements) % (col_dim_i * rows)
+            # batch start index + index of row to predict + column index, i+1 because we want to predict the future
             labels = b * col_dim * rows + (i + 1) * rows + col
             labels = labels.cuda()
 
@@ -94,24 +114,17 @@ class ContrastivePredictiveCodingNetworkLinearClassification(nn.Module):
         super().__init__()
         self.encoder = encoder
         self.num_patches_per_dim = num_patches_per_dim
-        #bn = nn.BatchNorm2d(encoder_dim)
-        #conv = nn.Conv2d(encoder_dim, out_channels=num_classes, kernel_size=(1, 1))
-        #mean_pool = nn.AvgPool2d(num_patches_per_dim)
-        #fc = nn.Linear()
-        #self.last_layers = nn.ModuleList([bn, conv, mean_pool])
         self.fc = nn.Linear(encoder_dim*num_patches_per_dim*num_patches_per_dim, num_classes)
 
     def forward(self, x):
         # x has shape (N, L, 1, HI, WI), L=7*7 in default setting and HI=WI=64 (original CPC)
         seq_length = x.size()[1]
+        # encode each patch
         latents = torch.stack([self.encoder(x[:, i, ...]) for i in range(seq_length)], dim=1)  # (N, L, DE)
-        latents = torch.reshape(latents, (x.size()[0], self.num_patches_per_dim, self.num_patches_per_dim, latents.size()[2]))  # (N, HL, WL, DE)
+        # reshape to have a grid of encoded patches, HL=WL=7, DE is encoder output dim
+        latents = torch.reshape(latents, (x.size()[0], self.num_patches_per_dim, self.num_patches_per_dim,
+                                          latents.size()[2]))  # (N, HL, WL, DE)
         latents = latents.permute(0, 3, 1, 2)  # (N, DE, HL, WL)
-        #bn, conv, mean_pool = self.last_layers
-        #x = bn(latents)
-        #x = conv(x)  # (N, num_classes, HL, WL)
-        #x = mean_pool(x)  # (N, num_classes, 1, 1)
-        #x = torch.flatten(x, 1)  # (N, num_classes)
         x = torch.flatten(latents, 1)
         x = self.fc(x)
         return x

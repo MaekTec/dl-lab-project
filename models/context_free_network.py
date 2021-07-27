@@ -16,7 +16,7 @@ class ContextFreeNetwork(nn.Module):
     def forward(self, x):
         # x has shape (N, 9, 1, H, W)
         x = [F.relu(self.encoder(x[:, i, ...])) for i in range(x.shape[1])]
-        x = torch.cat(x, dim=1)
+        x = torch.cat(x, dim=1)  # concat all encoded patches
         x = F.relu(self.fc7(x))
         x = self.fc8(x)
         return x

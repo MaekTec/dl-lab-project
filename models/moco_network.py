@@ -5,10 +5,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+"""
+This implementation is very similar to the pseudo code in the the paper.
+"""
+
 
 class MoCoNetwork(nn.Module):
     """
-    Attention: queue_size depends on dataset size
+    Attention: queue_size depends on dataset size, the queue should not be larger than the total dataset.
+    Otherwise you have negatives which are in truth positives, because all samples in the queue are
+    always used as negatives.
     """
 
     def __init__(self, encoder, encoder_dim, queue_size=150, momentum=0.999, softmax_temp=0.07):

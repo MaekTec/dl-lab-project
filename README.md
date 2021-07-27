@@ -1,7 +1,10 @@
 # Deep Learning Project: Contrastive Self-Supervision
 
 ## Installation
-See ```run.ipynb``` for further instructions or run it in Colab.
+See ```gcloud_cmds.sh``` for installation commands.
+
+## Run experiments
+Run ```run_all.sh``` or go through ```run.ipynb``` in Colab.
 
 ## Goals
 - [x] Rotation

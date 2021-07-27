@@ -74,4 +74,3 @@ class CMC_ViT_Backbone(nn.Module):
         feat_ab = self.net_ab(ab)
 
         return feat_l, feat_ab
-

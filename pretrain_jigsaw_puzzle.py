@@ -5,27 +5,30 @@ import torch
 import torch.nn as nn
 from pprint import pprint
 from data.transforms import get_transforms_pretraining_jigsaw_puzzle
-from utils import check_dir, set_random_seed, get_logger, accuracy, save_in_log, str2bool
+from training import train, validate
+from utils import check_dir, set_random_seed, get_logger, str2bool
 from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
 from models.context_free_network import ContextFreeNetwork
-from tqdm import tqdm
+import pickle
 
 """
-https://arxiv.org/pdf/1603.09246.pdf
-fixed random permutation set
-to avoid learning of shortcuts:
-- more than one permutation per image
-- shuffle tiles as much as possible with Hamming distance
-- random gap between tiles
-- resize to 256 and random crop 225x225, split in 9 tiles each 75x75 and extract 64x64 from each with random shift
-- grayscale images
+Paper: https://arxiv.org/pdf/1603.09246.pdf
+- predict id in fixed random permutation set
+- to avoid learning of shortcuts:
+    - more than one permutation per image
+    - shuffle tiles as much as possible with Hamming distance
+    - transforms:
+        - resize to 256
+        - random crop 225x225
+        - split in 9 tiles each 75x75
+        - extract 64x64 from each with random shift (random gap between tiles)
+        - random grayscale images
 """
 
 set_random_seed(0)
-writer = SummaryWriter()
 
 
 def parse_arguments():
@@ -35,7 +38,7 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--weight-decay', type=float, default=0.0, help='weight decay')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
-    parser.add_argument('--epochs', type=int, default=15, help='epochs')
+    parser.add_argument('--epochs', type=int, default=20, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
     parser.add_argument('--num-tiles-per-dim', type=int, default=3, help='in how many tiles to split the image')
     parser.add_argument('--number-of-permutations', type=int, default=64, help='number of different permutations')
@@ -55,7 +58,9 @@ def parse_arguments():
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
-    args.splits = args.num_tiles_per_dim**2
+    args.splits = args.num_tiles_per_dim**2  # number of tiles/patches
+
+    pickle.dump(args, open(os.path.join(args.output_folder, "args.p"), "wb"))
 
     return args
 
@@ -63,14 +68,9 @@ def parse_arguments():
 def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
+    writer = SummaryWriter()
 
     # build model
-<<<<<<< HEAD
-    encoder = ViTBackbone().cuda()
-    num_features = encoder.net.mlp_head[1].in_features
-    encoder.net.mlp_head[1] = nn.Linear(in_features=num_features, out_features=512).cuda()
-    model = ContextFreeNetwork(encoder, 512*4, 24).cuda()  # out_features of ViT * number of tiles
-=======
     encoder_out_dim = 512
     if args.resnet:
         encoder = ResNet18Backbone(num_classes=encoder_out_dim).cuda()
@@ -81,9 +81,6 @@ def main(args):
 
     logger.info(model)
     torchsummary.summary(model, (args.splits, 3, args.image_size, args.image_size), args.bs)
->>>>>>> b176ab86ad3bf677c8be038a14833fad3b9f6040
-
-    print(model)
 
     # load dataset
     data_root = args.data_folder
@@ -107,8 +104,8 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
-        val_loss, val_acc = validate(val_loader, model, criterion, epoch)
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch, writer)
+        val_loss, val_acc = validate(val_loader, model, criterion, epoch, writer)
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
@@ -119,63 +116,6 @@ def main(args):
         if val_loss < best_val_loss:
             torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
             best_val_loss = val_loss
-
-
-# train one epoch over the whole training dataset.
-def train(loader, model, criterion, optimizer, scheduler, epoch):
-    total_loss = 0
-    total_accuracy = 0
-    total = 0
-    model.train()
-    for i, (inputs, labels) in tqdm(enumerate(loader)):
-        inputs = inputs.cuda()
-        labels = labels.cuda()
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-
-        batch_size = labels.size(0)
-        total_loss += criterion(outputs, labels).item() * batch_size
-        total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
-        total += batch_size
-    scheduler.step()
-
-    mean_train_loss = total_loss / total
-    mean_train_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/train'] = mean_train_loss
-    scalar_dict['Accuracy/train'] = mean_train_accuracy
-    save_in_log(writer, epoch, scalar_dict=scalar_dict)
-    return mean_train_loss, mean_train_accuracy
-
-
-# validation function.
-def validate(loader, model, criterion, epoch):
-    total_loss = 0
-    total_accuracy = 0
-    total = 0
-    model.eval()
-    with torch.no_grad():
-        for i, (inputs, labels) in tqdm(enumerate(loader)):
-            inputs = inputs.cuda()
-            labels = labels.cuda()
-            outputs = model(inputs)
-
-            batch_size = labels.size(0)
-            total_loss += criterion(outputs, labels).item() * batch_size
-            total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
-            total += batch_size
-
-    mean_val_loss = total_loss / total
-    mean_val_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/val'] = mean_val_loss
-    scalar_dict['Accuracy/val'] = mean_val_accuracy
-    save_in_log(writer, epoch, scalar_dict=scalar_dict)
-
-    return mean_val_loss, mean_val_accuracy
 
 
 if __name__ == '__main__':

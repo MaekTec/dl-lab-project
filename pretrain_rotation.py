@@ -1,20 +1,23 @@
 import os
+import pickle
+
 import numpy as np
 import argparse
 import torch
 from pprint import pprint
 from data.transforms import get_transforms_pretraining_rotation, custom_collate
-from utils import check_dir, set_random_seed, get_logger, accuracy, save_in_log, str2bool
+from training import train, validate
+from utils import check_dir, set_random_seed, get_logger, str2bool
 from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 import torchsummary
-from tqdm import tqdm
 
-# https://arxiv.org/pdf/1803.07728.pdf
+"""
+Paper: https://arxiv.org/pdf/1803.07728.pdf
+"""
 
 set_random_seed(0)
-writer = SummaryWriter()
 
 
 def parse_arguments():
@@ -24,7 +27,7 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
     parser.add_argument('--weight-decay', type=float, default=0.0, help='weight decay')
     parser.add_argument('--bs', type=int, default=256, help='batch_size')
-    parser.add_argument('--epochs', type=int, default=15, help='epochs')
+    parser.add_argument('--epochs', type=int, default=20, help='epochs')
     parser.add_argument('--image-size', type=int, default=64, help='size of image')
     parser.add_argument("--resnet", type=str2bool, nargs='?',
                         const=True, default=False,
@@ -42,14 +45,17 @@ def parse_arguments():
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
+    pickle.dump(args, open(os.path.join(args.output_folder, "args.p"), "wb"))
+
     return args
 
 
 def main(args):
     # Logging to the file and stdout
     logger = get_logger(args.logs_folder, args.exp_name)
+    writer = SummaryWriter()
 
-    # build model and load weights
+    # build model
     if args.resnet:
         model = ResNet18Backbone(num_classes=4).cuda()
     else:
@@ -78,11 +84,10 @@ def main(args):
     logger.info('val_data {}'.format(val_data.__len__()))
 
     best_val_loss = np.inf
-    # Train-validate for one epoch. You don't have to run it for 100 epochs, preferably until it starts overfitting.
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
-        val_loss, val_acc = validate(val_loader, model, criterion, epoch)
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch, writer)
+        val_loss, val_acc = validate(val_loader, model, criterion, epoch, writer)
 
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Training accuracy: {}'.format(train_acc))
@@ -93,63 +98,6 @@ def main(args):
         if val_loss < best_val_loss:
             torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best.pth".format(epoch)))
             best_val_loss = val_loss
-
-
-# train one epoch over the whole training dataset.
-def train(loader, model, criterion, optimizer, scheduler, epoch):
-    total_loss = 0
-    total_accuracy = 0
-    total = 0
-    model.train()
-    for i, (inputs, labels) in tqdm(enumerate(loader)):
-        inputs = inputs.cuda()
-        labels = labels.cuda()
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-
-        batch_size = labels.size(0)
-        total_loss += criterion(outputs, labels).item() * batch_size
-        total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
-        total += batch_size
-    scheduler.step()
-
-    mean_train_loss = total_loss / total
-    mean_train_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/train'] = mean_train_loss
-    scalar_dict['Accuracy/train'] = mean_train_accuracy
-    save_in_log(writer, epoch, scalar_dict=scalar_dict)
-    return mean_train_loss, mean_train_accuracy
-
-
-# validation function.
-def validate(loader, model, criterion, epoch):
-    total_loss = 0
-    total_accuracy = 0
-    total = 0
-    model.eval()
-    with torch.no_grad():
-        for i, (inputs, labels) in tqdm(enumerate(loader)):
-            inputs = inputs.cuda()
-            labels = labels.cuda()
-            outputs = model(inputs)
-
-            batch_size = labels.size(0)
-            total_loss += criterion(outputs, labels).item() * batch_size
-            total_accuracy += accuracy(outputs, labels)[0].item() * batch_size
-            total += batch_size
-
-    mean_val_loss = total_loss / total
-    mean_val_accuracy = total_accuracy / total
-    scalar_dict = {}
-    scalar_dict['Loss/val'] = mean_val_loss
-    scalar_dict['Accuracy/val'] = mean_val_accuracy
-    save_in_log(writer, epoch, scalar_dict=scalar_dict)
-
-    return mean_val_loss, mean_val_accuracy
 
 
 if __name__ == '__main__':

@@ -49,7 +49,6 @@ class ImgRotation:
         return rotated_imgs, labels
 
 
-
 class DivideInTiles:
 
     def __init__(self, num_tiles_per_dim):
@@ -86,16 +85,10 @@ class ShuffleTiles:
 
     @staticmethod
     def hamming(p_0, p_1):
-        p_0 = np.expand_dims(p_0, axis=1)
-        p_1 = np.expand_dims(p_1, axis=0)
-        D = np.sum(p_0 != p_1, axis=2)
-        """
-        # Same, but slower:
         D = np.zeros((len(p_0), len(p_1)))
         for i in range(len(p_0)):
             for j in range(len(p_1)):
                 D[i, j] = np.sum(p_0[i] != p_1[j])
-        """
         return D
 
     def generate_permutation_set(self):
@@ -277,11 +270,12 @@ def get_transforms_pretraining_mpp():
     ])
     return train_transform
 
+
 def get_transforms_pretraining_contrastive_predictive_coding(args):
     train_transform = Compose([
         ToTensor(),
         Resize(int(args.image_size + ((args.num_patches_per_dim-1) * int(args.image_size/2)))),  # 160 for 4x4 grid
-        DivideInGrid(args.image_size, int(args.image_size/2)),  # 4x4 grid
+        DivideInGrid(args.image_size, int(args.image_size/2)),  # 4x4 grid with 50% overlap
         ApplyOnList(ToPILImage()),
         ApplyOnList(AutoAugment(AutoAugmentPolicy.CIFAR10)),
         ApplyOnList(AutoAugment(AutoAugmentPolicy.CIFAR10)),
@@ -311,20 +305,6 @@ def get_transforms_pretraining_moco(args):
     ])
     train_transform = TwoCropsTransform(transform_each_crop)
     return train_transform
-
-def get_transforms_pretraining_cmc(args):
-
-    color_transfer = RGB2Lab()
-    train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(args.image_size,),
-        transforms.RandomHorizontalFlip(),
-        color_transfer,
-        transforms.ToTensor(),
-        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
-    ])
-
-    return train_transform
-
 
 
 def get_transforms_downstream_jigsaw_puzzle_training(args):
@@ -363,6 +343,18 @@ def get_transforms_downstream_contrastive_predictive_coding_validation(args):
     ])
     return val_transform
 
+def get_transforms_pretraining_cmc(args):
+
+    color_transfer = RGB2Lab()
+    train_transform = transforms.Compose([
+        transforms.RandomResizedCrop(args.image_size,),
+        transforms.RandomHorizontalFlip(),
+        color_transfer,
+        transforms.ToTensor(),
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
+    ])
+
+    return train_transform
 
 
 def get_transforms_downstream_training(args):
