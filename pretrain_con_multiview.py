@@ -138,7 +138,7 @@ def train2(loader, model, criterion_l,criterion_ab, optimizer, scheduler, epoch,
         #print("i=",i)
         #if ((i+1) % 30) == 0:
         #    break
-        inputs = inputs.to(device, dtype=torch.float32)
+        inputs = inputs.to(device)
         index = index.to(device)
         optimizer.zero_grad()
         output_l, output_ab = model(inputs)
@@ -186,7 +186,7 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
         #print("i=",i)
         #if ((i+1) % 30) == 0:
         #    break
-        inputs = inputs.to(device, dtype=torch.float32)
+        inputs = inputs.to(device)
         optimizer.zero_grad()
         output_l, output_ab = model(inputs)
         loss = criterion(output_l, output_ab)
@@ -223,7 +223,7 @@ def validate(loader, model, criterion, epoch):
             #print("i=",i)
             #if ((i+1) % 30) == 0:
             #    break
-            inputs = inputs.to(device, dtype=torch.float32)
+            inputs = inputs.to(device)
             output_l, output_ab = model(inputs)
             loss = criterion(output_l, output_ab)
             epoch_losses_val.append(loss.cpu().data.item())

@@ -20,6 +20,13 @@ class RGB2Lab(object):
         img = color.rgb2lab(img)
         return img
 
+
+class ToFloatTensor(object):
+    def __call__(self, input):
+        input = input.to(dtype=torch.float32)
+        return input
+
+
 def custom_collate(batch):
     img, label = default_collate(batch)
     if isinstance(img, list):
@@ -346,12 +353,14 @@ def get_transforms_downstream_contrastive_predictive_coding_validation(args):
 def get_transforms_pretraining_cmc(args):
 
     color_transfer = RGB2Lab()
+    to_float_tensor = ToFloatTensor()
     train_transform = transforms.Compose([
         transforms.RandomResizedCrop(args.image_size,),
         transforms.RandomHorizontalFlip(),
         color_transfer,
         transforms.ToTensor(),
-        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
+        to_float_tensor,
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()),
     ])
 
     return train_transform

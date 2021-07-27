@@ -10,7 +10,7 @@ def train(loader, model, criterion, optimizer, scheduler, epoch, writer):
     total = 0
     model.train()
     for i, (inputs, labels) in tqdm(enumerate(loader)):
-        inputs = inputs.cuda().to(dtype=torch.float32)
+        inputs = inputs.cuda()
         labels = labels.cuda()
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -39,7 +39,7 @@ def validate(loader, model, criterion, epoch, writer):
     model.eval()
     with torch.no_grad():
         for i, (inputs, labels) in tqdm(enumerate(loader)):
-            inputs = inputs.cuda().to(dtype=torch.float32)
+            inputs = inputs.cuda()
             labels = labels.cuda()
             outputs = model(inputs)
 
