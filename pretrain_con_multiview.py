@@ -36,7 +36,8 @@ def parse_arguments():
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     parser.add_argument('--feat_dim', type=int, default=128, help='dim of feat for inner product')
-    parser.add_argument('--nce_k', type=int, default=16384)
+    parser.add_argument('--nce_k', type=int, default=2000)
+    parser.add_argument('--tau',type=float,default=0.07)
 
     args = parser.parse_args()
 
@@ -95,10 +96,11 @@ def main(args):
     criterion_l = NCESoftmaxLoss().cuda()
     criterion_ab = NCESoftmaxLoss().cuda()
 
-    criterion = ContLoss()
+    criterion = ContLoss(args.tau)
 
     #criterion = torch.nn.CrossEntropyLoss() #TODO
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay= args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
@@ -109,8 +111,8 @@ def main(args):
     best_val_loss = np.inf
     for epoch in range(args.epochs):
         logger.info("Epoch {}".format(epoch))
-        #train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
-        train_loss, train_acc = train2(train_loader, model, criterion_l,criterion_ab, optimizer, scheduler, epoch,contrast)
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, scheduler, epoch)
+        #train_loss, train_acc = train2(train_loader, model, criterion_l,criterion_ab, optimizer, scheduler, epoch,contrast)
         val_loss, val_acc = validate(val_loader, model, criterion, epoch)
 
         logger.info('Training loss: {}'.format(train_loss))

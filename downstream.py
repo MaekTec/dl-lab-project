@@ -8,17 +8,19 @@ from pprint import pprint
 
 from torchvision.datasets import CIFAR10
 
+from models.cmc_network import CMCLinearClassifier
 from models.contrastive_predictive_coding_network import ContrastivePredictiveCodingNetworkLinearClassification
 from training import train, validate
 from utils import check_dir, set_random_seed, get_logger, str2bool
-from models.pretraining_backbone import ViTBackbone, ResNet18Backbone
+from models.pretraining_backbone import ViTBackbone, ResNet18Backbone, CMC_ViT_Backbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 from models.context_free_network import ContextFreeNetwork
 from data.transforms import get_transforms_downstream_training, \
     get_transforms_downstream_validation, get_transforms_pretraining_contrastive_predictive_coding, \
     get_transforms_downstream_contrastive_predictive_coding_validation, get_transforms_pretraining_jigsaw_puzzle, \
-    get_transforms_downstream_jigsaw_puzzle_validation, get_transforms_downstream_jigsaw_puzzle_training
+    get_transforms_downstream_jigsaw_puzzle_validation, get_transforms_downstream_jigsaw_puzzle_training, \
+    get_transforms_pretraining_mpp, get_transforms_pretraining_cmc
 from enum import Enum
 import torchsummary
 
@@ -31,6 +33,8 @@ class PretrainTask(Enum):
     jigsaw_puzzle = 'jigsaw_puzzle'
     cpc = 'cpc'
     moco = 'moco'
+    patch_prediction='patch_prediction'
+    cmc='cmc'
 
     def __str__(self):
         return self.value
@@ -216,6 +220,44 @@ def get_model(args):
 
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
+
+    elif args.pretrain_task is PretrainTask.patch_prediction:
+        # xxx
+        model_dict = model.state_dict()
+        pretrained_dict = torch.load(args.weight_init)
+
+        if args.resnet:
+            # TODO
+            pass
+        else:
+            del pretrained_dict['net.mlp_head.1.weight']
+            del pretrained_dict['net.mlp_head.1.bias']
+
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
+
+    elif args.pretrain_task is PretrainTask.cmc:
+        # xxx
+        encoder_dim = 128
+        model = CMC_ViT_Backbone(image_size=args.image_size, patch_size=16, num_classes=encoder_dim).cuda()
+
+        print(model)
+        model_dict = model.state_dict()
+        pretrained_dict = torch.load(args.weight_init)
+
+        if args.resnet:
+            # TODO
+            pass
+        else:
+            del pretrained_dict['net_l.mlp_head.1.weight']
+            del pretrained_dict['net_l.mlp_head.1.bias']
+            del pretrained_dict['net_ab.mlp_head.1.weight']
+            del pretrained_dict['net_ab.mlp_head.1.bias']
+
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
+        model = CMCLinearClassifier(model, encoder_dim).cuda()
+
     else:
         raise ValueError
 
@@ -238,6 +280,12 @@ def get_transforms(args):
         transform_validation = get_transforms_downstream_contrastive_predictive_coding_validation(args)
     elif args.pretrain_task is PretrainTask.moco:
         pass
+    elif args.pretrain_task is PretrainTask.patch_prediction:
+        transform = get_transforms_pretraining_mpp()
+        transform_validation = get_transforms_pretraining_mpp()
+    elif args.pretrain_task is PretrainTask.cmc:
+        transform = get_transforms_pretraining_cmc(args)
+        transform_validation = get_transforms_pretraining_cmc(args)
     return transform, transform_validation
 
 

@@ -7,12 +7,12 @@ from utils.alias_multinomial import AliasMethod
 import math
 
 
-tau = 0.07
 
 class ContLoss(nn.Module):
 
-    def __init__(self):
+    def __init__(self, tau=0.07):
         super(ContLoss, self).__init__()
+        self.tau = tau
 
     def forward(self,a,b):
         a_norm = torch.norm(a, dim=1).reshape(-1, 1)
@@ -23,11 +23,11 @@ class ContLoss(nn.Module):
         a_cap_b_cap_transpose = torch.t(a_cap_b_cap)
         b_cap_a_cap = torch.cat([b_cap, a_cap], dim=0)
         sim = torch.mm(a_cap_b_cap, a_cap_b_cap_transpose)
-        sim_by_tau = torch.div(sim, tau)
+        sim_by_tau = torch.div(sim, self.tau)
         exp_sim_by_tau = torch.exp(sim_by_tau)
         sum_of_rows = torch.sum(exp_sim_by_tau, dim=1)
         exp_sim_by_tau_diag = torch.diag(exp_sim_by_tau)
-        numerators = torch.exp(torch.div(torch.nn.CosineSimilarity()(a_cap_b_cap, b_cap_a_cap), tau))
+        numerators = torch.exp(torch.div(torch.nn.CosineSimilarity()(a_cap_b_cap, b_cap_a_cap), self.tau))
         denominators = sum_of_rows - exp_sim_by_tau_diag
         num_by_den = torch.div(numerators, denominators)
         neglog_num_by_den = -torch.log(num_by_den)
