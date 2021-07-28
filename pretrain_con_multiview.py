@@ -129,6 +129,7 @@ def train(loader, model, criterion, optimizer, scheduler, epoch):
     total = 0
     model.train()
     epoch_losses_train = []
+    print('LR=',scheduler.get_last_lr())
     for i, (inputs, index) in tqdm(enumerate(loader)):
         #print("i=",i)
         #if ((i+1) % 30) == 0:
