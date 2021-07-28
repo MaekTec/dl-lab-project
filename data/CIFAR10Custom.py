@@ -79,6 +79,8 @@ class CIFAR10Custom(torchvision.datasets.CIFAR10):
 
             if self.pretrain_task == 'cmc':
                 return img, index
+
+            return img
         else:
             img, target = self.data[index], self.targets[index]
 
