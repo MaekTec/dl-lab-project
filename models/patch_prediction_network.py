@@ -1,3 +1,5 @@
+#adapted from the mpp demo code uploaded at https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/mpp.py
+
 import math
 
 import torch
@@ -7,6 +9,9 @@ from einops import rearrange, repeat, reduce
 
 
 def prob_mask_like(input, prob):
+    """
+    For each sequence, contains the Bool value whether to apply patching
+    """
     batch_size, seq_length, _ = input.shape
     x = torch.zeros((batch_size, seq_length)).float().uniform_(0, 1)
     x = x < prob
@@ -39,9 +44,9 @@ class PatchPredictionNetwork(nn.Module):
             output_channel_bits=3,
             channels=3,
             max_pixel_val=1.0,
-            mask_prob=0.15,
-            replace_prob=0.5,
-            random_patch_prob=0.5,
+            mask_prob=0.15, # probability of using token in masked prediction task
+            replace_prob=0.5, # probability of replacing a token being used for mpp with the mask token
+            random_patch_prob=0.5, # probability of randomly replacing a token being used for mpp
             mean=None,
             std=None
     ):
@@ -65,7 +70,7 @@ class PatchPredictionNetwork(nn.Module):
 
     def forward(self, input, **kwargs):
         transformer = self.transformer
-        print(transformer)
+        #print(transformer)
         #print(input.shape)
         #keep copy of original image.. used for Loss
         img = input.detach().clone()
@@ -91,8 +96,7 @@ class PatchPredictionNetwork(nn.Module):
         #convert the masked input into a linear embedding of patches
         masked_input = transformer.net.to_patch_embedding[-1](masked_input)
 
-        #append CLS token to start of each sequence
-        #CLS tokens are used to denote start of a sequence
+        #append CLS token to start of each sequence ;CLS tokens are used to denote start of a sequence
         b,n,i = masked_input.shape
         cls_token_arr = repeat(transformer.net.cls_token, '() n d -> b n d', b=b)
         masked_input = torch.cat((cls_token_arr,masked_input), dim=1)
@@ -106,10 +110,11 @@ class PatchPredictionNetwork(nn.Module):
 
         #print("output shape 1:", output.shape)
         #bring back to image dimension for loss calculation
-        #output = self.to_bits(output)
+        output = self.to_bits(output)
         #print("output shape 2:", output.shape)
         #remove the channel first layer CLS
         output = output[:,1:,:]
+        #print(output.shape)
 
         return output , mask
 

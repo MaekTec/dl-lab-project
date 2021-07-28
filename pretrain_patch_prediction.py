@@ -9,6 +9,7 @@ from models.pretraining_backbone import ViTBackbone
 from torch.utils.tensorboard import SummaryWriter
 from data.CIFAR10Custom import CIFAR10Custom
 from models.patch_prediction_network import PatchPredictionLoss,PatchPredictionNetwork
+from tqdm import tqdm
 
 # https://arxiv.org/pdf/1803.07728.pdf
 
@@ -30,6 +31,8 @@ def parse_arguments():
                         help="Use ResNet instead of Vit")
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
+    parser.add_argument('--mask_prob',type=float,default=0.50)
+    parser.add_argument('--replace-prob',type=float,default=0.80)
     args = parser.parse_args()
 
     hparam_keys = ["lr", "bs", "epochs", "resnet"]
@@ -49,7 +52,7 @@ def main(args):
     logger = get_logger(args.logs_folder, args.exp_name)
 
     model = ViTBackbone(image_size=64, patch_size=args.patch_size,num_classes=1000).cuda()
-    patch_prediction_network = PatchPredictionNetwork(transformer=model,patch_size=args.patch_size,dim=1024,mask_prob=0.15, replace_prob=0.50).cuda()
+    patch_prediction_network = PatchPredictionNetwork(transformer=model,patch_size=args.patch_size,dim=1024,mask_prob=args.mask_prob, replace_prob=args.replace_prob).cuda()
 
     # load dataset
     data_root = args.data_folder
@@ -94,7 +97,7 @@ def train(loader, model, criterion, optimizer, epoch):
     total_accuracy = 0
     total = 0
     model.train()
-    for i, inputs in enumerate(loader):
+    for i, inputs in tqdm(enumerate(loader)):
         #print(f"Trainstep: {i}")
         inputs = inputs.cuda()
         #labels = labels.cuda()
@@ -125,7 +128,7 @@ def validate(loader, model, criterion, epoch):
     total = 0
     model.eval()
     with torch.no_grad():
-        for i , inputs in enumerate(loader):
+        for i , inputs in tqdm(enumerate(loader)):
             inputs = inputs.cuda()
             outputs, masks = model(inputs)
 
