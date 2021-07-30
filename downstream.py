@@ -258,7 +258,7 @@ def get_model(args):
         model.load_state_dict(model_dict)
         model = CMCLinearClassifier(model, encoder_dim).cuda()
         print(model)
-        #last_layer = model.xx
+        last_layer = model.xx
 
     else:
         raise ValueError

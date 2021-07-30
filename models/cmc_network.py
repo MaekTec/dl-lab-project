@@ -7,9 +7,9 @@ class CMCLinearClassifier(nn.Module):
     def __init__(self, model, encoder_dim):
         super().__init__()
         self.transformer = model
-        self.fc1 = nn.Linear(in_features=encoder_dim*2, out_features=encoder_dim)
-        self.fc2 = nn.Linear(in_features=encoder_dim, out_features=10)
-        #self.xx = nn.Sequential(nn.Linear(in_features=encoder_dim*2, out_features=encoder_dim),nn.ReLU(),nn.Linear(in_features=encoder_dim, out_features=10))
+        #self.fc1 = nn.Linear(in_features=encoder_dim*2, out_features=encoder_dim)
+        #self.fc2 = nn.Linear(in_features=encoder_dim, out_features=10)
+        self.xx = nn.Sequential(nn.Linear(in_features=encoder_dim*2, out_features=encoder_dim),nn.ReLU(),nn.Linear(in_features=encoder_dim, out_features=10))
 
 
     def forward(self, x):
