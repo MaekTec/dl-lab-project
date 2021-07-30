@@ -225,10 +225,11 @@ def get_model(args):
         # xxx
         model_dict = model.state_dict()
         pretrained_dict = torch.load(args.weight_init)
+        print(model)
 
         if args.resnet:
-            # TODO
-            pass
+            del pretrained_dict['net.fc.weight']
+            del pretrained_dict['net.fc.bias']
         else:
             del pretrained_dict['net.mlp_head.1.weight']
             del pretrained_dict['net.mlp_head.1.bias']
@@ -257,7 +258,7 @@ def get_model(args):
         model.load_state_dict(model_dict)
         model = CMCLinearClassifier(model, encoder_dim).cuda()
         print(model)
-        last_layer = model.xx
+        #last_layer = model.xx
 
     else:
         raise ValueError
