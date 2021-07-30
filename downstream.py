@@ -241,7 +241,6 @@ def get_model(args):
         encoder_dim = 128
         model = CMC_ViT_Backbone(image_size=args.image_size, patch_size=16, num_classes=encoder_dim).cuda()
 
-        print(model)
         model_dict = model.state_dict()
         pretrained_dict = torch.load(args.weight_init)
 
@@ -257,6 +256,8 @@ def get_model(args):
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
         model = CMCLinearClassifier(model, encoder_dim).cuda()
+        print(model)
+        last_layer = model.xx
 
     else:
         raise ValueError
