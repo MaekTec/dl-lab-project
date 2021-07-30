@@ -15,8 +15,8 @@ class CMCLinearClassifier(nn.Module):
     def forward(self, x):
         output_l, output_ab = self.transformer(x)
         output = torch.cat((output_l.detach(),output_ab.detach()),dim=1)
-        output = F.relu(self.fc1(output))
-        output = self.fc2(output)
-        #output = self.xx(output)
+        #output = F.relu(self.fc1(output))
+        #output = self.fc2(output)
+        output = self.xx(output)
         return output
 
