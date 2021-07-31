@@ -13,12 +13,12 @@ class ViTBackbone(nn.Module):
             image_size=image_size,
             patch_size=patch_size,
             num_classes=num_classes,
-            dim=768,
-            depth=5,
-            heads=10,
-            mlp_dim=1024,
-            dropout=0.01,
-            emb_dropout=0.01
+            dim=1024,
+            depth=6,
+            heads=16,
+            mlp_dim=2048,
+            dropout=0.1,
+            emb_dropout=0.1
         )
 
     def forward(self, x):

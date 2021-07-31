@@ -333,26 +333,16 @@ def get_transforms_downstream_contrastive_predictive_coding_validation(args):
 
 def get_transforms_downstream_training(args):
     train_transform = Compose([
-
-        #transforms.RandomAffine(degrees=20, shear=10),
+        transforms.RandomAffine(degrees=20, shear=10),
         # random crop and aspect ratio
-        #transforms.RandomResizedCrop((args.image_size, args.image_size), scale=(0.9, 1.0), ratio=(3. / 4., 4. / 3.)),
-        #transforms.ColorJitter(brightness=0.1, contrast=0.1),
-        #transforms.GaussianBlur(5, (0.1, 2.0)),
-        #transforms.RandomHorizontalFlip(),
-        #transforms.RandomGrayscale(p=0.2),
-
-
-        AutoAugment(AutoAugmentPolicy.CIFAR10),
-        AutoAugment(AutoAugmentPolicy.CIFAR10),
+        transforms.RandomResizedCrop((args.image_size, args.image_size), scale=(0.9, 1.0), ratio=(3. / 4., 4. / 3.)),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1),
+        transforms.GaussianBlur(5, (0.1, 2.0)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomGrayscale(p=0.2),
         ToTensor(),
-        RandomApply([ColorJitter(brightness=.2, contrast=0.2, saturation=0.2, hue=.2)], p=0.8),
-        RandomApply([RandomAffine(0, shear=5)], p=0.2),
-        RandomApply([Grayscale(num_output_channels=3)], p=0.25),
-        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()),
         Resize(args.image_size),
-
-        #Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
+        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
     ])
     return train_transform
 
