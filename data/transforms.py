@@ -344,6 +344,7 @@ def get_transforms_downstream_training(args):
 
         AutoAugment(AutoAugmentPolicy.CIFAR10),
         AutoAugment(AutoAugmentPolicy.CIFAR10),
+        ToTensor(),
         RandomApply([ColorJitter(brightness=.2, contrast=0.2, saturation=0.2, hue=.2)], p=0.8),
         RandomApply([RandomAffine(0, shear=5)], p=0.2),
         RandomApply([Grayscale(num_output_channels=3)], p=0.25),
