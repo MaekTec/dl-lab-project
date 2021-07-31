@@ -342,7 +342,7 @@ def get_transforms_downstream_training(args):
         #transforms.RandomHorizontalFlip(),
         #transforms.RandomGrayscale(p=0.2),
 
-        ToPILImage(),
+        Resize(args.image_size),
         AutoAugment(AutoAugmentPolicy.CIFAR10),
         AutoAugment(AutoAugmentPolicy.CIFAR10),
         ToTensor(),
@@ -351,9 +351,7 @@ def get_transforms_downstream_training(args):
         RandomApply([Grayscale(num_output_channels=3)], p=0.25),
         Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std()),
 
-        ToTensor(),
-        Resize(args.image_size),
-        Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
+        #Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
     ])
     return train_transform
 
