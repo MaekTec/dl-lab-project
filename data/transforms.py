@@ -342,6 +342,7 @@ def get_transforms_downstream_training(args):
         #transforms.RandomHorizontalFlip(),
         #transforms.RandomGrayscale(p=0.2),
 
+        ToPILImage(),
         AutoAugment(AutoAugmentPolicy.CIFAR10),
         AutoAugment(AutoAugmentPolicy.CIFAR10),
         ToTensor(),
