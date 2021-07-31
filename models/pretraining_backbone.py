@@ -17,8 +17,8 @@ class ViTBackbone(nn.Module):
             depth=5,
             heads=6,
             mlp_dim=1024,
-            dropout=0.1,
-            emb_dropout=0.1
+            dropout=0.01,
+            emb_dropout=0.01
         )
 
     def forward(self, x):
