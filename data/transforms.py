@@ -333,11 +333,11 @@ def get_transforms_downstream_contrastive_predictive_coding_validation(args):
 
 def get_transforms_downstream_training(args):
     train_transform = Compose([
-        #transforms.RandomAffine(degrees=20, shear=10),
+        transforms.RandomAffine(degrees=20, shear=10),
         # random crop and aspect ratio
-        #transforms.RandomResizedCrop((args.image_size, args.image_size), scale=(0.9, 1.0), ratio=(3. / 4., 4. / 3.)),
-        #transforms.ColorJitter(brightness=0.1, contrast=0.1),
-        #transforms.GaussianBlur(5, (0.1, 2.0)),
+        transforms.RandomResizedCrop((args.image_size, args.image_size), scale=(0.9, 1.0), ratio=(3. / 4., 4. / 3.)),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1),
+        transforms.GaussianBlur(5, (0.1, 2.0)),
         transforms.RandomHorizontalFlip(),
         ToTensor(),
         Resize(args.image_size),
