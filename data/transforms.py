@@ -339,6 +339,7 @@ def get_transforms_downstream_training(args):
         transforms.ColorJitter(brightness=0.1, contrast=0.1),
         transforms.GaussianBlur(5, (0.1, 2.0)),
         transforms.RandomHorizontalFlip(),
+        transforms.RandomGrayscale(p=0.2),
         ToTensor(),
         Resize(args.image_size),
         Normalize(CIFAR10Custom.mean(), CIFAR10Custom.std())
