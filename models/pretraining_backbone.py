@@ -15,7 +15,7 @@ class ViTBackbone(nn.Module):
             num_classes=num_classes,
             dim=512,
             depth=5,
-            heads=6,
+            heads=10,
             mlp_dim=1024,
             dropout=0.01,
             emb_dropout=0.01
