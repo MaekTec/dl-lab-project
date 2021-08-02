@@ -10,6 +10,6 @@ Run ```run_all.sh``` or go through ```run.ipynb``` in Colab.
 - [x] Rotation
 - [x] Jigsaw puzzle
 - [x] Contrastive predictive coding
-- [ ] Masked patch prediction
-- [ ] Contrastive multiview coding
+- [x] Masked patch prediction
+- [x] Contrastive multiview coding
 - [x] Momentum contrast 
