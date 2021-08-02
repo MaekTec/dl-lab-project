@@ -44,7 +44,7 @@ def main(args):
     rcParams.update({'figure.autolayout': True})  # no cut offs
     if small:
         from matplotlib.pyplot import figure
-        figure(num=None, figsize=(4.8, 3.6), dpi=100)  # default: figure(num=None, figsize=(6.4, 4.8), dpi=100)
+        figure(num=None, figsize=(6.4, 4.8), dpi=100)  # default: figure(num=None, figsize=(6.4, 4.8), dpi=100)
 
     for i, (x_value, metric_value) in enumerate(zip(x_values_list, metric_values_list)):
         if args.labels is None:
@@ -54,7 +54,7 @@ def main(args):
     plt.xlabel(args.xlabel.replace("_", " "))
     plt.ylabel(args.ylabel.replace("_", " "))
     # plt.title(args.name)
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     if show:
         plt.show()
     if save:
